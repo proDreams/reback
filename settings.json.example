@@ -1,0 +1,63 @@
+{
+  "s3_endpoint": "https://s3.example.com",
+  "s3_region": "us-east-1",
+  "s3_bucket": "my-bucket",
+  "s3_access": "access-key",
+  "s3_secret": "secret-key",
+  "temp_dir": "/tmp/backups",
+  "elements": [
+    {
+      "element_title": "my_pg_db",
+      "element_type": "database",
+      "s3_folder": "postgres_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "postgresql",
+        "db_host": "localhost",
+        "db_port": 5432,
+        "db_name": "my_database",
+        "db_user": "user",
+        "db_password": "password"
+      }
+    },
+    {
+      "element_title": "my_mongo_db",
+      "element_type": "database",
+      "s3_folder": "mongodb_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "mongodb",
+        "db_name": "my_mongo_database",
+        "db_user": "mongo_user",
+        "db_password": "mongo_password"
+      }
+    },
+    {
+      "element_title": "my_pg_docker_db",
+      "element_type": "docker_database",
+      "s3_folder": "postgres_docker_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "postgresql_docker",
+        "docker_container": "postgres_container",
+        "db_name": "my_database",
+        "db_user": "user",
+        "db_password": "password"
+      }
+    },
+    {
+      "element_title": "project_folder",
+      "element_type": "folder",
+      "s3_folder": "folder_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "folder",
+        "path": "/path/to/folder"
+      }
+    }
+  ]
+}
