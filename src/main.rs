@@ -1,6 +1,8 @@
 use crate::structures::settings::Settings;
+use crate::utils::process_backup::start_backup_process;
 
 mod structures;
+mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -12,5 +14,13 @@ async fn main() {
         }
     };
 
-    println!("{:?}", settings);
+    let bucket = match settings.get_bucket() {
+        Some(bucket) => bucket,
+        None => {
+            eprintln!("Failed to create bucket.");
+            return;
+        }
+    };
+
+    start_backup_process(&settings, &bucket).await;
 }
