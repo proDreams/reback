@@ -41,10 +41,15 @@ jobs:
         shell: bash
         run: |
           cargo build --all --release ${{ matrix.args }}
-          if [ "${{ matrix.platform }}" != "windows-latest" ]; then
-            strip target/release/universal-backup-restore
+          BIN_PATH="target/release/universal-backup-restore${{ matrix.platform == 'windows-latest' && '.exe' || '' }}"
+          if [ ! -f "$BIN_PATH" ]; then
+            echo "Error: Binary not found at $BIN_PATH"
+            exit 1
           fi
-          mv target/release/universal-backup-restore${{ matrix.platform == 'windows-latest' && '.exe' || '' }} target/release/${{ matrix.file }}
+          if [ "${{ matrix.platform }}" != "windows-latest" ]; then
+            strip "$BIN_PATH"
+          fi
+          mv "$BIN_PATH" "target/release/${{ matrix.file }}"
 
       - name: Release
         uses: softprops/action-gh-release@v2
