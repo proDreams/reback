@@ -37,19 +37,17 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Build
-        shell: bash
+      - name: Build for macOS and Linux
+        if: ${{ matrix.platform != 'windows-latest' }}
         run: |
           cargo build --all --release ${{ matrix.args }}
-          BIN_PATH="target/release/universal-backup-restore${{ matrix.platform == 'windows-latest' && '.exe' || '' }}"
-          if [ ! -f "$BIN_PATH" ]; then
-            echo "Error: Binary not found at $BIN_PATH"
-            exit 1
-          fi
-          if [ "${{ matrix.platform }}" != "windows-latest" ]; then
-            strip "$BIN_PATH"
-          fi
-          mv "$BIN_PATH" "target/release/${{ matrix.file }}"
+          strip target/release/universal-backup-restore
+          mv target/release/universal-backup-restore target/release/${{ matrix.file }}
+
+      - name: Build for Windows
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          cargo build --all --release
 
       - name: Release
         uses: softprops/action-gh-release@v2
