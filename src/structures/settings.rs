@@ -1,6 +1,8 @@
+use crate::structures::elements::Elements;
+use s3::creds::Credentials;
+use s3::{Bucket, Region};
 use serde::Deserialize;
 use std::{fs, io};
-use crate::structures::elements::Elements;
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
@@ -9,10 +11,9 @@ pub struct Settings {
     pub s3_bucket: String,
     pub s3_access: String,
     pub s3_secret: String,
-    pub temp_dir: String,
+    pub backup_dir: String,
     pub elements: Vec<Elements>,
 }
-
 
 impl Settings {
     pub fn from_file() -> io::Result<Settings> {
@@ -27,5 +28,33 @@ impl Settings {
         };
 
         Ok(settings)
+    }
+
+    pub fn get_bucket(&self) -> Option<Bucket> {
+        let credentials = Credentials::new(
+            Some(&self.s3_access),
+            Some(&self.s3_secret),
+            None,
+            None,
+            None,
+        )
+        .map_err(|err| {
+            eprintln!("Error creating credentials: {}", err);
+            err
+        })
+        .ok()?;
+
+        let region = Region::Custom {
+            region: self.s3_region.clone(),
+            endpoint: self.s3_endpoint.clone(),
+        };
+
+        match Bucket::new(self.s3_bucket.as_str(), region, credentials) {
+            Ok(bucket) => Some(*bucket.with_path_style()),
+            Err(err) => {
+                eprintln!("Error creating bucket: {}", err);
+                None
+            }
+        }
     }
 }
