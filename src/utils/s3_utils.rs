@@ -4,6 +4,30 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
+/// Uploads a file to an S3 bucket.
+///
+/// This function uploads the specified file to the given S3 bucket at the path determined by the
+/// `s3_folder` and the file's name. It reads the file from the provided local `path` and uploads it
+/// to the specified S3 folder.
+///
+/// # Arguments
+/// - `bucket` - The S3 bucket where the file will be uploaded.
+/// - `path` - The local path to the file that will be uploaded.
+/// - `s3_folder` - The folder in the S3 bucket where the file will be stored.
+///
+/// # Errors
+/// This function will return an error if:
+/// - The file cannot be opened from the provided path.
+/// - The file name cannot be extracted from the path.
+/// - The upload to S3 fails.
+///
+/// # Example
+/// ```rust
+/// let bucket: Bucket = /* Obtain the S3 bucket instance */;
+/// let path: Path = /* Local path to the file */;
+/// let s3_folder = "backup_folder".to_string();
+/// upload_file_to_s3(&bucket, &path, &s3_folder).await?;
+/// ```
 pub async fn upload_file_to_s3(
     bucket: &Bucket,
     path: &Path,
@@ -28,6 +52,31 @@ pub async fn upload_file_to_s3(
     Ok(())
 }
 
+/// Checks for outdated backups in an S3 bucket and deletes them if they exceed the retention period.
+///
+/// This function lists the files in the specified S3 folder and checks their timestamps based on their
+/// filenames. If a file's timestamp indicates it is older than the specified retention period, the file
+/// is deleted from the bucket.
+///
+/// # Arguments
+/// - `bucket` - The S3 bucket where the backups are stored.
+/// - `title` - The prefix to identify the backup files (typically the name of the backup element).
+/// - `folder` - The S3 folder containing the backup files.
+/// - `retention` - The retention period in days. Files older than this period will be deleted.
+///
+/// # Errors
+/// This function will return an error if:
+/// - Listing the objects in the S3 bucket fails.
+/// - Parsing the file timestamps or deleting a file fails.
+///
+/// # Example
+/// ```rust
+/// let bucket: Bucket = /* Obtain the S3 bucket instance */;
+/// let title = "my_backup".to_string();
+/// let folder = "backup_folder".to_string();
+/// let retention = 30; // Delete backups older than 30 days
+/// check_outdated_s3_backups(&bucket, &title, &folder, &retention).await?;
+/// ```
 pub async fn check_outdated_s3_backups(
     bucket: &Bucket,
     title: &String,
