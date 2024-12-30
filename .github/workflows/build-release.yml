@@ -40,7 +40,7 @@ jobs:
       - name: Build for macOS and Linux
         if: ${{ matrix.platform != 'windows-latest' }}
         run: |
-          cargo build --all --release ${{ matrix.args }}
+          cargo build --all --release
           strip target/release/universal-backup-restore
           mv target/release/universal-backup-restore target/release/${{ matrix.file }}
 
