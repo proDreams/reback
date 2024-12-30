@@ -28,6 +28,8 @@
       "s3_backup_retention_days": 90,
       "params": {
         "type": "mongodb",
+        "db_host": "localhost",
+        "db_port": 27017,
         "db_name": "my_mongo_database",
         "db_user": "mongo_user",
         "db_password": "mongo_password"
@@ -53,7 +55,7 @@
       "s3_backup_retention_days": 90,
       "params": {
         "type": "folder",
-        "path": "/path/to/folder"
+        "target_path": "/path/to/folder"
       }
     }
   ]

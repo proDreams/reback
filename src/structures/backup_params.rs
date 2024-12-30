@@ -17,17 +17,17 @@ pub enum BackupParams {
         db_password: String,
     },
     Mongodb {
-        db_name: Option<String>,
+        db_host: String,
+        db_port: u16,
         db_user: Option<String>,
         db_password: Option<String>,
     },
     MongodbDocker {
         docker_container: String,
-        db_name: Option<String>,
         db_user: Option<String>,
         db_password: Option<String>,
     },
     Folder {
-        path: String,
+        target_path: String,
     },
 }
