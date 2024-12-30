@@ -38,9 +38,10 @@ jobs:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Build
+        shell: bash
         run: |
           cargo build --all --release ${{ matrix.args }}
-          if [[ ${{ matrix.platform }} != 'windows-latest' ]]; then
+          if [ "${{ matrix.platform }}" != "windows-latest" ]; then
             strip target/release/universal-backup-restore
           fi
           mv target/release/universal-backup-restore${{ matrix.platform == 'windows-latest' && '.exe' || '' }} target/release/${{ matrix.file }}
