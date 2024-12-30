@@ -11,7 +11,17 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            file: universal-backup-restore_amd64
+          - os: windows-latest
+            file: universal-backup-restore.exe
+          - os: macos-latest
+            file: universal-backup-restore_darwin
 
     steps:
       - name: Checkout
@@ -23,67 +33,25 @@ jobs:
           toolchain: stable
           default: true
           override: true
+          target: ${{ matrix.os == 'macos-latest' && 'x86_64-apple-darwin' || '' }}
 
       - name: Build
-        run: cargo build --all --release && strip target/release/universal-backup-restore && mv target/release/universal-backup-restore target/release/universal-backup-restore_amd64
+        run: |
+          cargo build --all --release
+          strip target/release/universal-backup-restore
+          mv target/release/universal-backup-restore target/release/${{ matrix.file }}
+
+      - name: Create Tag
+        run: |
+          TAG="v$(date +'%Y%m%d%H%M%S')"
+          git tag $TAG
+          git push origin $TAG
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            target/release/universal-backup-restore_amd64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-win:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install latest rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          default: true
-          override: true
-
-      - name: Build
-        run: cargo build --all --release
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
-        with:
-          files: target/release/universal-backup-restore.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-mac:
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install latest rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-apple-darwin
-          default: true
-          override: true
-
-      - name: Build for mac
-        run: cargo build --all --release && strip target/release/universal-backup-restore && mv target/release/universal-backup-restore target/release/universal-backup-restore_darwin
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
-        with:
-          files: |
-            target/release/universal-backup-restore_darwin
+            target/release/${{ matrix.file }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
