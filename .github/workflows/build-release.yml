@@ -87,3 +87,4 @@ jobs:
             target/release/universal-backup-restore_darwin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
