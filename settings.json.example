@@ -4,11 +4,11 @@
   "s3_bucket": "my-bucket",
   "s3_access": "access-key",
   "s3_secret": "secret-key",
-  "temp_dir": "/tmp/backups",
+  "s3_path_style": "",
+  "backup_dir": "/tmp/backups",
   "elements": [
     {
       "element_title": "my_pg_db",
-      "element_type": "database",
       "s3_folder": "postgres_backups",
       "backup_retention_days": 30,
       "s3_backup_retention_days": 90,
@@ -23,7 +23,6 @@
     },
     {
       "element_title": "my_mongo_db",
-      "element_type": "database",
       "s3_folder": "mongodb_backups",
       "backup_retention_days": 30,
       "s3_backup_retention_days": 90,
@@ -36,7 +35,6 @@
     },
     {
       "element_title": "my_pg_docker_db",
-      "element_type": "docker_database",
       "s3_folder": "postgres_docker_backups",
       "backup_retention_days": 30,
       "s3_backup_retention_days": 90,
@@ -50,7 +48,6 @@
     },
     {
       "element_title": "project_folder",
-      "element_type": "folder",
       "s3_folder": "folder_backups",
       "backup_retention_days": 30,
       "s3_backup_retention_days": 90,
