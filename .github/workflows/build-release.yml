@@ -29,7 +29,7 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         with:
           files: |
             target/release/universal-backup-restore_amd64
@@ -55,7 +55,7 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         with:
           files: target/release/universal-backup-restore.exe
         env:
@@ -81,7 +81,7 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         with:
           files: |
             target/release/universal-backup-restore_darwin
