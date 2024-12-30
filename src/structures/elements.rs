@@ -4,6 +4,18 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+/// Represents an element to be backed up, along with its backup configuration.
+///
+/// This structure contains the title, S3 folder, retention settings, and optional
+/// backup parameters for various types of elements (e.g., PostgreSQL, MongoDB, folder).
+/// It also provides functionality to perform backups based on the provided parameters.
+///
+/// # Fields
+/// - `element_title` - A descriptive title for the element being backed up.
+/// - `s3_folder` - The folder in the S3 bucket where the backup should be stored.
+/// - `backup_retention_days` - The number of days to retain the backup locally.
+/// - `s3_backup_retention_days` - The number of days to retain the backup in the S3 bucket.
+/// - `params` - Optional parameters describing the type of backup (e.g., database or folder).
 #[derive(Debug, Deserialize)]
 pub struct Elements {
     pub element_title: String,
@@ -14,6 +26,28 @@ pub struct Elements {
 }
 
 impl Elements {
+    /// Performs a backup based on the specified parameters for the element.
+    ///
+    /// This function generates a backup for the element using the appropriate method:
+    /// PostgreSQL, MongoDB, Docker-based PostgreSQL, Docker-based MongoDB, or folder backup.
+    /// It constructs the required backup command, executes it, and returns the path to the backup file.
+    ///
+    /// # Arguments
+    /// - `path` - The base directory path where the backup file will be stored.
+    ///
+    /// # Returns
+    /// - `Ok(PathBuf)` - The path of the generated backup file.
+    /// - `Err(String)` - An error message if backup parameters are not provided or an error occurs during backup.
+    ///
+    /// # Behavior
+    /// - The function formats the backup filename with a timestamp (e.g., `element-title-YYYY-MM-DD_HH-MM-SS.sql`).
+    /// - It executes different backup commands depending on the backup type (PostgreSQL, MongoDB, Docker-based backups, etc.).
+    /// - If no backup parameters are provided, it returns an error with the element title.
+    ///
+    /// # Example
+    /// ```rust
+    /// let backup_path = element.perform_backup(&backup_dir).await?;
+    /// ```
     pub async fn perform_backup(&self, path: &Path) -> Result<PathBuf, String> {
         let now = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
         let file_path: PathBuf;
@@ -162,6 +196,25 @@ impl Elements {
         Ok(file_path)
     }
 
+    /// Executes a shell command asynchronously to perform a backup.
+    ///
+    /// This function runs a shell command (using `sh -c`) to perform the backup operation,
+    /// printing a success or error message depending on the command's result.
+    ///
+    /// # Arguments
+    /// - `command` - The shell command to execute.
+    ///
+    /// # Returns
+    /// - `Output` - The output of the executed command, containing the status and any stdout/stderr.
+    ///
+    /// # Behavior
+    /// - If the command succeeds, the function prints a success message.
+    /// - If the command fails, it prints an error message and the error details.
+    ///
+    /// # Example
+    /// ```rust
+    /// let output = element.execute_command(&command).await;
+    /// ```
     async fn execute_command(&self, command: &str) -> Output {
         let output = Command::new("sh")
             .arg("-c")
