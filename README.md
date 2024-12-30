@@ -73,6 +73,7 @@ executable (`universal-backup-restore`). Below is an example of the configuratio
   "s3_bucket": "my-bucket",
   "s3_access": "access-key",
   "s3_secret": "secret-key",
+  "s3_path_style": "path",
   "backup_dir": "/tmp/backups",
   "elements": [
     {
