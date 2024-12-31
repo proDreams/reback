@@ -3,6 +3,7 @@ use s3::creds::Credentials;
 use s3::{Bucket, Region};
 use serde::Deserialize;
 use std::{fs, io};
+use log::error;
 
 /// Represents the application's configuration settings.
 ///
@@ -48,15 +49,18 @@ pub enum S3PathStyle {
 impl Settings {
     /// Reads the application's configuration from a JSON file.
     ///
-    /// This function attempts to load and deserialize the `settings.json` file into a `Settings` instance.
+    /// This function attempts to read the `settings.json` file, deserialize its content into
+    /// a `Settings` instance, and return it. If the file is not found or cannot be parsed,
+    /// an appropriate error is returned.
     ///
     /// # Returns
-    /// - `Ok(Settings)` if the file is successfully read and parsed.
-    /// - `Err(io::Error)` if the file cannot be read or the JSON is invalid.
+    /// - `Ok(Settings)` if the file is successfully read and parsed into a `Settings` instance.
+    /// - `Err(io::Error)` if the file cannot be read or if the JSON content is invalid.
     ///
     /// # Errors
     /// - If the file cannot be found or read, an error of kind `io::ErrorKind::NotFound` is returned.
-    /// - If the JSON cannot be deserialized, an error of kind `io::ErrorKind::InvalidData` is returned.
+    /// - If the JSON cannot be deserialized, an error of kind `io::ErrorKind::InvalidData` is returned
+    ///   with additional error details from the `serde_json` deserialization process.
     ///
     /// # Example
     /// ```rust
@@ -68,7 +72,7 @@ impl Settings {
         let settings: Settings = match serde_json::from_str(&file_content) {
             Ok(data) => data,
             Err(err) => {
-                eprintln!("Error parsing JSON file: {}", err);
+                error!("Error parsing JSON file: {}", err);
                 return Err(io::Error::new(io::ErrorKind::InvalidData, err));
             }
         };
@@ -79,19 +83,21 @@ impl Settings {
     /// Creates and initializes an S3 bucket instance.
     ///
     /// This function uses the configuration provided in the `Settings` structure
-    /// to create an S3 bucket instance. The bucket is configured according to the specified
-    /// `s3_path_style`.
+    /// to create an S3 bucket instance. The bucket is configured according to the
+    /// specified `s3_path_style`, which determines how the S3 endpoint is addressed.
     ///
     /// # Returns
-    /// - `Some(Bucket)` if the bucket is successfully initialized.
-    /// - `None` if there is an error in the bucket creation process.
+    /// - `Some(Bucket)` if the bucket is successfully created and initialized.
+    /// - `None` if there is an error during the bucket creation process.
     ///
     /// # Errors
-    /// - Logs an error to `stderr` if credentials are invalid or the bucket cannot be initialized.
+    /// - Logs an error to `stderr` if credentials are invalid, if the bucket cannot be created,
+    ///   or if other issues arise during the process.
     ///
     /// # Behavior
-    /// - If `s3_path_style` is `Path`, the bucket is initialized with `with_path_style()`.
-    /// - If `s3_path_style` is `VirtualHost`, the bucket is initialized without path-style addressing.
+    /// - If `s3_path_style` is `S3PathStyle::Path`, the bucket is initialized with path-style addressing
+    ///   using the `with_path_style()` method.
+    /// - If `s3_path_style` is `S3PathStyle::VirtualHost`, the bucket is initialized without path-style addressing.
     ///
     /// # Example
     /// ```rust
@@ -106,7 +112,7 @@ impl Settings {
             None,
         )
         .map_err(|err| {
-            eprintln!("Error creating credentials: {}", err);
+            error!("Error creating credentials: {}", err);
             err
         })
         .ok()?;
@@ -124,7 +130,7 @@ impl Settings {
                 S3PathStyle::Path => Some(*bucket.with_path_style()),
             },
             Err(err) => {
-                eprintln!("Error creating bucket: {}", err);
+                error!("Error creating bucket: {}", err);
                 None
             }
         }

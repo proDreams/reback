@@ -2,25 +2,28 @@ use chrono::{Duration, Local, NaiveDateTime};
 use std::fs;
 use std::io;
 use std::path::Path;
+use log::info;
 
 /// Checks for and deletes outdated local backup files based on the retention period.
 ///
-/// This function scans the specified directory for files that match the given title, checks their
-/// creation date (extracted from the filename), and compares it against the current date. If the file
-/// is older than the specified retention period, it will be deleted.
+/// This function scans the specified directory for files matching the given title, extracts the
+/// creation date from the filename, and compares it to the current date. Files older than the specified
+/// retention period will be deleted.
 ///
-/// The filenames must follow a pattern where the title is followed by a date in the format
-/// `title-yyyy-mm-dd_HH-MM-SS.<extension>`. The function deletes files that are older than the given
-/// retention period.
+/// The filenames must follow a specific pattern: they should start with the `title` followed by a date in
+/// the format `title-yyyy-mm-dd_HH-MM-SS.<extension>`. The function will delete files that are older than
+/// the specified retention period.
 ///
 /// # Arguments
-/// - `path` - The path to the directory where the backup files are stored.
-/// - `title` - The title used in the filenames of the backup files. Files that start with this title
+/// - `path` - The path to the directory containing the backup files.
+/// - `title` - The prefix used in the filenames of the backup files. Only files starting with this title
 ///             will be considered for deletion.
 /// - `retention` - The retention period in days. Files older than this period will be deleted.
 ///
-/// # Errors
-/// This function will return an error if reading the directory or deleting a file fails.
+/// # Returns
+/// - `Ok(())` if the function completes successfully, i.e., the outdated backup files are checked and
+///   deleted as necessary.
+/// - An error of type `io::Error` if reading the directory or deleting a file fails.
 ///
 /// # Example
 /// ```rust
@@ -60,7 +63,7 @@ pub fn check_outdated_local_backups(path: &Path, title: &String, retention: &u64
         }
     }
 
-    println!("Check and delete outdated local backups completed");
+    info!("Check and delete outdated local backups completed");
 
     Ok(())
 }
