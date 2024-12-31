@@ -5,11 +5,12 @@ use tokio::fs::File;
 use tokio::io::BufReader;
 use std::path::Path;
 
-/// Uploads a file to an S3 bucket.
+/// Uploads a file to an S3 bucket asynchronously.
 ///
 /// This function uploads the specified file to the given S3 bucket at the path determined by the
-/// `s3_folder` and the file's name. It reads the file from the provided local `path` and uploads it
-/// to the specified S3 folder.
+/// `s3_folder` and the file's name. It uses asynchronous I/O to open and read the file from the
+/// provided local `path`, ensuring efficient resource usage and avoiding potential blocking
+/// operations. The file is then streamed to the specified S3 folder.
 ///
 /// # Arguments
 /// - `bucket` - The S3 bucket where the file will be uploaded.
@@ -18,7 +19,7 @@ use std::path::Path;
 ///
 /// # Errors
 /// This function will return an error if:
-/// - The file cannot be opened from the provided path.
+/// - The file cannot be opened asynchronously from the provided path.
 /// - The file name cannot be extracted from the path.
 /// - The upload to S3 fails.
 ///
