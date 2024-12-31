@@ -3,7 +3,7 @@ use chrono::Local;
 use log::{error, info};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Command;
 
 /// Represents an element to be backed up, along with its backup configuration.
 ///
