@@ -1,7 +1,8 @@
 use chrono::{Duration, Local, NaiveDateTime};
 use s3::bucket::Bucket;
 use std::error::Error;
-use std::fs;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 
 /// Uploads a file to an S3 bucket.
@@ -33,9 +34,6 @@ pub async fn upload_file_to_s3(
     path: &Path,
     s3_folder: &String,
 ) -> Result<(), Box<dyn Error>> {
-    let file =
-        fs::read(path).map_err(|e| format!("Failed to open file {}: {}", path.display(), e))?;
-
     let file_name = path
         .file_name()
         .ok_or_else(|| format!("Failed to extract file name from {}", path.display()))?;
@@ -43,10 +41,14 @@ pub async fn upload_file_to_s3(
 
     let s3_path = format!("/{}/{}", s3_folder, file_name);
 
+    let file = File::open(path).await?;
+    let mut reader = BufReader::new(file);
+
+
     bucket
-        .put_object(&s3_path, &file)
+        .put_object_stream(&mut reader, s3_path)
         .await
-        .map_err(|e| format!("Failed to upload file to S3 {}: {}", s3_path, e))?;
+        .map_err(|e| format!("Failed to upload file to S3: {}", e))?;
 
     println!("File uploaded successfully to {}", s3_path);
     Ok(())
