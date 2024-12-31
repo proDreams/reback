@@ -1,5 +1,6 @@
 use crate::structures::backup_params::BackupParams;
 use chrono::Local;
+use log::{error, info};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -28,9 +29,11 @@ pub struct Elements {
 impl Elements {
     /// Performs a backup based on the specified parameters for the element.
     ///
-    /// This function generates a backup for the element using the appropriate method:
-    /// PostgreSQL, MongoDB, Docker-based PostgreSQL, Docker-based MongoDB, or folder backup.
+    /// This function generates a backup for the element using the appropriate method: PostgreSQL, MongoDB, Docker-based PostgreSQL, Docker-based MongoDB, or folder backup.
     /// It constructs the required backup command, executes it, and returns the path to the backup file.
+    ///
+    /// The filename is formatted with a timestamp (e.g., `element-title-YYYY-MM-DD_HH-MM-SS.sql`) to avoid overwriting files.
+    /// The backup command is executed for each type of backup, depending on the provided parameters.
     ///
     /// # Arguments
     /// - `path` - The base directory path where the backup file will be stored.
@@ -40,9 +43,11 @@ impl Elements {
     /// - `Err(String)` - An error message if backup parameters are not provided or an error occurs during backup.
     ///
     /// # Behavior
-    /// - The function formats the backup filename with a timestamp (e.g., `element-title-YYYY-MM-DD_HH-MM-SS.sql`).
-    /// - It executes different backup commands depending on the backup type (PostgreSQL, MongoDB, Docker-based backups, etc.).
-    /// - If no backup parameters are provided, it returns an error with the element title.
+    /// - Executes a backup command based on the backup type specified in `self.params`.
+    /// - If no backup parameters are provided (`None`), it returns an error with the element's title.
+    /// - The method handles PostgreSQL, MongoDB, Docker-based backups, and folder backups.
+    /// - For Docker-based backups, the appropriate `docker exec` commands are used to run the backups inside containers.
+    /// - For folder backups, a `tar` command is used to create compressed archive files.
     ///
     /// # Example
     /// ```rust
@@ -60,7 +65,7 @@ impl Elements {
                 db_user,
                 db_password,
             }) => {
-                println!(
+                info!(
                     "Backing up PostgreSQL: host={}, port={}, db={}, user={}",
                     db_host, db_port, db_name, db_user
                 );
@@ -86,7 +91,7 @@ impl Elements {
                 db_user,
                 db_password,
             }) => {
-                println!(
+                info!(
                     "Backing up PostgreSQL Docker: docker_container={}, db={}, user={}",
                     docker_container, db_name, db_user
                 );
@@ -111,7 +116,7 @@ impl Elements {
                 db_user,
                 db_password,
             }) => {
-                println!("Backing up MongoDB");
+                info!("Backing up MongoDB");
 
                 let file_name = format!("{}-{}.gz", self.element_title, now);
                 file_path = path.join(&file_name);
@@ -144,7 +149,7 @@ impl Elements {
                 db_user,
                 db_password,
             }) => {
-                println!("Backing up MongoDB: docker_container={}", docker_container);
+                info!("Backing up MongoDB: docker_container={}", docker_container);
 
                 let file_name = format!("{}-{}.gz", self.element_title, now);
                 file_path = path.join(&file_name);
@@ -177,7 +182,7 @@ impl Elements {
                 self.execute_command(&copy_backup_command).await;
             }
             Some(BackupParams::Folder { target_path }) => {
-                println!("Backing up folder: path={}", target_path);
+                info!("Backing up folder: path={}", target_path);
 
                 let file_name = format!("{}-{}.tar.gz", self.element_title, now);
                 file_path = path.join(&file_name);
@@ -198,37 +203,40 @@ impl Elements {
 
     /// Executes a shell command asynchronously to perform a backup.
     ///
-    /// This function runs a shell command (using `sh -c`) to perform the backup operation,
-    /// printing a success or error message depending on the command's result.
+    /// This function runs a shell command (using `sh -c`) to execute the backup operation.
+    /// It captures the output and checks whether the command succeeded or failed, printing
+    /// appropriate messages based on the result.
     ///
     /// # Arguments
-    /// - `command` - The shell command to execute.
+    /// - `command` - The shell command to execute. This should be a valid shell command string
+    ///   that performs the backup operation.
     ///
     /// # Returns
-    /// - `Output` - The output of the executed command, containing the status and any stdout/stderr.
+    /// - `()` - This function does not return any value. It logs success or failure messages
+    ///   based on the command's execution status.
     ///
     /// # Behavior
-    /// - If the command succeeds, the function prints a success message.
-    /// - If the command fails, it prints an error message and the error details.
+    /// - If the command executes successfully (i.e., the exit status is `0`), it logs a success message.
+    /// - If the command fails, it logs an error message along with the `stderr` output to provide error details.
     ///
     /// # Example
     /// ```rust
-    /// let output = element.execute_command(&command).await;
+    /// element.execute_command(&command).await;
     /// ```
-    async fn execute_command(&self, command: &str) -> Output {
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(command)
-            .output()
-            .expect("Failed to execute backup command");
+    async fn execute_command(&self, command: &str) {
+        let output = match Command::new("sh").arg("-c").arg(command).output() {
+            Ok(o) => o,
+            Err(e) => {
+                error!("Failed to execute backup command '{}': {}", command, e);
+                return;
+            }
+        };
 
         if output.status.success() {
-            println!("Backup created successfully!");
+            info!("Backup created successfully!");
         } else {
-            eprintln!("Backup failed!");
-            eprintln!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            error!("Backup failed!");
+            error!("Error: {}", String::from_utf8_lossy(&output.stderr));
         }
-
-        output
     }
 }
