@@ -1,5 +1,6 @@
 use crate::structures::settings::Settings;
 use crate::utils::process_backup::start_backup_process;
+use log::error;
 use std::env;
 
 mod structures;
@@ -23,7 +24,7 @@ mod utils;
 /// # Example
 /// Run the program with the `"backup"` argument to start the backup process:
 /// ```sh
-/// cargo run -- backup
+/// cargo run backup
 /// ```
 ///
 /// # Errors
@@ -32,20 +33,32 @@ mod utils;
 /// - If the S3 bucket initialization fails, the function logs an error and exits.
 /// - If an unknown argument is provided, the function logs an error and exits.
 ///
-/// This function uses the `#[tokio::main]` macro to enable asynchronous execution.
+/// # Execution Flow
+/// The main function follows this execution flow:
+/// 1. Initializes logging with `env_logger::init()`.
+/// 2. Reads and validates the command-line arguments.
+/// 3. Loads settings from a configuration file (`Settings::from_file()`).
+/// 4. Creates an S3 bucket instance (`Settings::get_bucket()`).
+/// 5. Executes the corresponding action based on the argument (`"backup"`).
+/// 6. Logs and exits if any error occurs during initialization or execution.
+///
+/// This function uses the `#[tokio::main]` macro to enable asynchronous execution, allowing for
+/// the asynchronous backup process.
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        eprintln!("No command argument provided. Exiting.");
+        error!("No command argument provided. Exiting.");
         return;
     }
 
     let settings = match Settings::from_file() {
         Ok(s) => s,
         Err(err) => {
-            eprintln!("Failed to initialize settings: {}", err);
+            error!("Failed to initialize settings: {}", err);
             return;
         }
     };
@@ -53,7 +66,7 @@ async fn main() {
     let bucket = match settings.get_bucket() {
         Some(bucket) => bucket,
         None => {
-            eprintln!("Failed to create bucket.");
+            error!("Failed to create bucket.");
             return;
         }
     };
@@ -63,7 +76,7 @@ async fn main() {
             start_backup_process(&settings, &bucket).await;
         }
         _ => {
-            eprintln!("Unknown argument provided. Exiting.");
+            error!("Unknown argument provided. Exiting.");
             return;
         }
     }
