@@ -1,8 +1,8 @@
 use chrono::{Duration, Local, NaiveDateTime};
 use s3::bucket::Bucket;
 use std::error::Error;
-use std::fs::File;
-use std::io::BufReader;
+use tokio::fs::File;
+use tokio::io::BufReader;
 use std::path::Path;
 
 /// Uploads a file to an S3 bucket.
@@ -46,7 +46,7 @@ pub async fn upload_file_to_s3(
 
 
     bucket
-        .put_object_stream(&mut reader, s3_path)
+        .put_object_stream(&mut reader, s3_path.clone())
         .await
         .map_err(|e| format!("Failed to upload file to S3: {}", e))?;
 
