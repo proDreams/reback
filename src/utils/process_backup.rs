@@ -1,6 +1,7 @@
 use crate::structures::settings::Settings;
 use crate::utils::fs_utils::check_outdated_local_backups;
 use crate::utils::s3_utils::{check_outdated_s3_backups, upload_file_to_s3};
+use log::{error, info, warn};
 use s3::Bucket;
 use std::fs;
 use std::path::Path;
@@ -18,6 +19,11 @@ use std::path::Path;
 /// # Arguments
 /// - `settings` - The configuration containing backup settings and elements to back up.
 /// - `bucket` - The S3 bucket where the backup files will be uploaded.
+///
+/// # Behavior
+/// - The function will attempt to process each element in the `settings`. If any operation fails (directory creation,
+///   backup creation, file upload, or outdated backup deletion), the error is logged, and the function continues with
+///   the next element. This ensures that a failure in one element does not stop the backup process for other elements.
 ///
 /// # Errors
 /// This function will panic if:
@@ -37,35 +43,57 @@ pub async fn start_backup_process(settings: &Settings, bucket: &Bucket) {
         let path = Path::new(&path_str);
 
         if !path.exists() {
-            fs::create_dir_all(path).expect("Failed to create backup dir");
-            println!("Created backup dir {}", path.display());
+            if let Err(e) = fs::create_dir_all(path) {
+                error!("Failed to create backup dir {}: {}", path.display(), e);
+                continue;
+            }
+            info!("Created backup dir {}", path.display());
         }
 
         let file_path = match element.perform_backup(&path).await {
             Ok(f) => f,
-            Err(_) => {
+            Err(e) => {
+                warn!(
+                    "Backup process encountered an error for {}: {}",
+                    element.element_title, e
+                );
                 continue;
             }
         };
 
-        upload_file_to_s3(&bucket, &file_path, &element.s3_folder)
-            .await
-            .expect("Failed to upload file");
+        if let Err(e) = upload_file_to_s3(&bucket, &file_path, &element.s3_folder).await {
+            error!(
+                "Failed to upload file to S3 for {}: {}",
+                element.element_title, e
+            );
+            continue;
+        }
 
-        check_outdated_local_backups(
+        if let Err(e) = check_outdated_local_backups(
             &path,
             &element.element_title,
             &element.backup_retention_days,
-        )
-        .expect("Failed to delete outdated local backups");
+        ) {
+            error!(
+                "Failed to delete outdated local backups for {}: {}",
+                element.element_title, e
+            );
+            continue;
+        }
 
-        check_outdated_s3_backups(
+        if let Err(e) = check_outdated_s3_backups(
             &bucket,
             &element.element_title,
             &element.s3_folder,
             &element.s3_backup_retention_days,
         )
         .await
-        .expect("Failed to delete outdated backups from S3");
+        {
+            error!(
+                "Failed to delete outdated backups from S3 for {}: {}",
+                element.element_title, e
+            );
+            continue;
+        }
     }
 }

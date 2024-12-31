@@ -4,18 +4,23 @@ use std::error::Error;
 use tokio::fs::File;
 use tokio::io::BufReader;
 use std::path::Path;
+use log::info;
 
 /// Uploads a file to an S3 bucket asynchronously.
 ///
 /// This function uploads the specified file to the given S3 bucket at the path determined by the
 /// `s3_folder` and the file's name. It uses asynchronous I/O to open and read the file from the
-/// provided local `path`, ensuring efficient resource usage and avoiding potential blocking
-/// operations. The file is then streamed to the specified S3 folder.
+/// provided local `path`, ensuring efficient resource usage without blocking operations.
+/// The file is then streamed to the specified S3 folder.
 ///
 /// # Arguments
 /// - `bucket` - The S3 bucket where the file will be uploaded.
 /// - `path` - The local path to the file that will be uploaded.
 /// - `s3_folder` - The folder in the S3 bucket where the file will be stored.
+///
+/// # Returns
+/// - `Ok(())` if the file is uploaded successfully.
+/// - `Err(Box<dyn Error>)` if any error occurs, such as failing to open the file, extract its name, or upload it to S3.
 ///
 /// # Errors
 /// This function will return an error if:
@@ -51,7 +56,7 @@ pub async fn upload_file_to_s3(
         .await
         .map_err(|e| format!("Failed to upload file to S3: {}", e))?;
 
-    println!("File uploaded successfully to {}", s3_path);
+    info!("File uploaded successfully to {}", s3_path);
     Ok(())
 }
 
@@ -63,9 +68,14 @@ pub async fn upload_file_to_s3(
 ///
 /// # Arguments
 /// - `bucket` - The S3 bucket where the backups are stored.
-/// - `title` - The prefix to identify the backup files (typically the name of the backup element).
+/// - `title` - The prefix used to identify the backup files (typically the name of the backup element).
 /// - `folder` - The S3 folder containing the backup files.
 /// - `retention` - The retention period in days. Files older than this period will be deleted.
+///
+/// # Returns
+/// - `Ok(())` if the outdated backups were successfully deleted.
+/// - `Err(Box<dyn Error>)` if an error occurs during the process, such as issues with listing objects,
+///   parsing timestamps, or deleting files.
 ///
 /// # Errors
 /// This function will return an error if:
@@ -119,7 +129,7 @@ pub async fn check_outdated_s3_backups(
         }
     }
 
-    println!("Check and delete outdated S3 backups completed");
+    info!("Check and delete outdated S3 backups completed");
 
     Ok(())
 }
