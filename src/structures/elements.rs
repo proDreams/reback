@@ -77,7 +77,7 @@ impl Elements {
                     "PGPASSWORD=\"{}\" pg_dump -U {} -h {} -p {} {} > {}",
                     db_password,
                     db_user,
-                    db_host,
+                    db_host.clone().unwrap_or(String::from("localhost")),
                     db_port,
                     db_name,
                     file_path.display(),
@@ -85,6 +85,7 @@ impl Elements {
 
                 self.execute_command(&command).await;
             }
+
             Some(BackupParams::PostgresqlDocker {
                 docker_container,
                 db_name,
@@ -110,6 +111,7 @@ impl Elements {
 
                 self.execute_command(&command).await;
             }
+
             Some(BackupParams::Mongodb {
                 db_host,
                 db_port,
@@ -125,7 +127,7 @@ impl Elements {
                     Some(user) => {
                         format!(
                             "mongodump --host {} --port {} --username {} --password {:?} --authenticationDatabase admin --archive={} --gzip",
-                            db_host,
+                            db_host.clone().unwrap_or(String::from("localhost")),
                             db_port,
                             user,
                             db_password,
@@ -135,7 +137,7 @@ impl Elements {
                     None => {
                         format!(
                             "mongodump --host {} --port {} --archive={} --gzip",
-                            db_host,
+                            db_host.clone().unwrap_or("localhost".to_string()),,
                             db_port,
                             file_path.display(),
                         )
@@ -144,6 +146,7 @@ impl Elements {
 
                 self.execute_command(&command).await;
             }
+
             Some(BackupParams::MongodbDocker {
                 docker_container,
                 db_user,
@@ -181,6 +184,7 @@ impl Elements {
 
                 self.execute_command(&copy_backup_command).await;
             }
+
             Some(BackupParams::Folder { target_path }) => {
                 info!("Backing up folder: path={}", target_path);
 
@@ -191,6 +195,61 @@ impl Elements {
 
                 self.execute_command(&command).await;
             }
+
+            Some(BackupParams::MySQL {
+                db_host,
+                db_port,
+                db_name,
+                db_user,
+                db_password,
+            }) => {
+                info!(
+                    "Backing up MySQL: host={}, port={}, db={}, user={}",
+                    db_host, db_port, db_name, db_user
+                );
+
+                let file_name = format!("{}-{}.sql", self.element_title, now);
+                file_path = path.join(&file_name);
+
+                let command = format!(
+                    "MYSQL_PWD={} mysqldump -u {} -h {} -P {} {} > {}",
+                    db_password,
+                    db_user,
+                    db_host.clone().unwrap_or(String::from("localhost")),
+                    db_port,
+                    db_name,
+                    file_path.display(),
+                );
+
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::MySQLDocker {
+                docker_container,
+                db_name,
+                db_user,
+                db_password,
+            }) => {
+                info!(
+                    "Backing up MySQL Docker: docker_container={}, db={}, user={}",
+                    docker_container, db_name, db_user
+                );
+
+                let file_name = format!("{}-{}.sql", self.element_title, now);
+                file_path = path.join(&file_name);
+
+                let command = format!(
+                    "docker exec {} bash -c \"MYSQL_PWD='{}' mysqldump -u {} {}\" > {}",
+                    docker_container,
+                    db_password,
+                    db_user,
+                    db_name,
+                    file_path.display(),
+                );
+
+                self.execute_command(&command).await;
+            }
+
             None => {
                 return Err(format!(
                     "No backup parameters provided for element '{}'",

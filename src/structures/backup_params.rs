@@ -30,7 +30,7 @@ use serde::Deserialize;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BackupParams {
     Postgresql {
-        db_host: String,
+        db_host: Option<String>,
         db_port: u16,
         db_name: String,
         db_user: String,
@@ -43,7 +43,7 @@ pub enum BackupParams {
         db_password: String,
     },
     Mongodb {
-        db_host: String,
+        db_host: Option<String>,
         db_port: u16,
         db_user: Option<String>,
         db_password: Option<String>,
@@ -55,5 +55,18 @@ pub enum BackupParams {
     },
     Folder {
         target_path: String,
+    },
+    MySQL {
+        db_host: Option<String>,
+        db_port: u16,
+        db_name: String,
+        db_user: String,
+        db_password: String,
+    },
+    MySQLDocker {
+        docker_container: String,
+        db_name: String,
+        db_user: String,
+        db_password: String,
     },
 }
