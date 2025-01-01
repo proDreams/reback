@@ -24,7 +24,9 @@ elements.
 - [Configuration](#configuration)
     - [Configuration Parameters](#configuration-parameters)
     - [Adding Backup Elements](#adding-backup-elements)
-    - [Types of Elements and Their Parameters](#types-of-elements-and-their-parameters)
+    - [Available Element Types](#available-element-types)
+    - [Backup Element Parameters Table](#backup-element-parameters-table)
+    - [Common Parameters for All Elements](#common-parameters-for-all-elements)
 - [Usage](#usage)
     - [Running as a Cron Job](#running-as-a-cron-job)
 - [Author](#author)
@@ -164,54 +166,61 @@ for backing up a specific type. Example:
 
 A complete configuration example is available in the file [settings.json.example](settings.json.example).
 
-### Types of Elements and Their Parameters:
+### Available Element Types:
 
-- `postgresql`: Backup of a PostgreSQL database. For this type, specify:
-    - `db_host` (optional): Database host. Default is `localhost`.
-    - `db_port`: Connection port.
-    - `db_name`: Database name.
-    - `db_user`: Database user.
-    - `db_password`: User password.
+- `postgresql` — Backup of a PostgreSQL database.
+- `postgresql_docker` — Backup of a PostgreSQL database from a Docker container.
+- `mongodb` — Backup of a MongoDB database.
+- `mongodb_docker` — Backup of a MongoDB database from a Docker container.
+- `mysql` — Backup of a MySQL database.
+- `mysql_docker` — Backup of a MySQL database from a Docker container.
+- `folder` — Backup of a local directory.
 
-- `postgresql_docker`: Backup of a PostgreSQL database from a Docker container. For this type, specify:
-    - `docker_container`: Name of the Docker container with PostgreSQL.
-    - `db_name`: Database name.
-    - `db_user`: Database user.
-    - `db_password`: User password.
+### Backup Element Parameters Table:
 
-- `mongodb`: Backup of a MongoDB database. For this type, specify:
-    - `db_host` (optional): Database host. Default is `localhost`.
-    - `db_port`: Connection port.
-    - `db_user` (optional): Database user.
-    - `db_password` (optional): User password.
+| Element Type          | Parameter          | Description                                   | Required |
+|-----------------------|--------------------|-----------------------------------------------|----------|
+| **postgresql**        | `db_host`          | Database host. Default: `localhost`.          | Optional |  
+|                       | `db_port`          | Port for connection.                          | Required |  
+|                       | `db_name`          | Name of the database.                         | Required |  
+|                       | `db_user`          | Database user.                                | Required |  
+|                       | `db_password`      | User password.                                | Required |  
+|                       |                    |                                               |          |  
+| **postgresql_docker** | `docker_container` | Name of the Docker container with PostgreSQL. | Required |  
+|                       | `db_name`          | Name of the database.                         | Required |  
+|                       | `db_user`          | Database user.                                | Required |  
+|                       | `db_password`      | User password.                                | Required |  
+|                       |                    |                                               |          |  
+| **mongodb**           | `db_host`          | Database host. Default: `localhost`.          | Optional |  
+|                       | `db_port`          | Port for connection.                          | Required |  
+|                       | `db_user`          | Database user.                                | Optional |  
+|                       | `db_password`      | User password.                                | Optional |  
+|                       |                    |                                               |          |  
+| **mongodb_docker**    | `docker_container` | Name of the Docker container with MongoDB.    | Required |  
+|                       | `db_user`          | Database user.                                | Optional |  
+|                       | `db_password`      | User password.                                | Optional |  
+|                       |                    |                                               |          |  
+| **mysql**             | `db_host`          | Database host. Default: `localhost`.          | Optional |  
+|                       | `db_port`          | Port for connection.                          | Required |  
+|                       | `db_name`          | Name of the database.                         | Required |  
+|                       | `db_user`          | Database user.                                | Required |  
+|                       | `db_password`      | User password.                                | Required |  
+|                       |                    |                                               |          |  
+| **mysql_docker**      | `docker_container` | Name of the Docker container with MySQL.      | Required |  
+|                       | `db_name`          | Name of the database.                         | Required |  
+|                       | `db_user`          | Database user.                                | Required |  
+|                       | `db_password`      | User password.                                | Required |  
+|                       |                    |                                               |          |  
+| **folder**            | `target_path`      | Path to the directory to be backed up.        | Required |  
 
-- `mongodb_docker`: Backup of a MongoDB database from a Docker container. For this type, specify:
-    - `docker_container`: Name of the Docker container with MongoDB.
-    - `db_user` (optional): Database user.
-    - `db_password` (optional): User password.
+### Common Parameters for All Elements:
 
-- `mysql`: Backup of a MySQL database. For this type, specify:
-    - `db_host` (optional): Database host. Default is `localhost`.
-    - `db_port`: Connection port.
-    - `db_name`: Database name.
-    - `db_user`: Database user.
-    - `db_password`: User password.
-
-- `mysql_docker`: Backup of a MySQL database from a Docker container. For this type, specify:
-    - `docker_container`: Name of the Docker container with MySQL.
-    - `db_name`: Database name.
-    - `db_user`: Database user.
-    - `db_password`: User password.
-
-- `folder`: Backup of a local directory. For this type, specify:
-    - `target_path`: Path to the directory to be backed up.
-
-Each element also includes:
-
-- **element_title**: The name of the element (for use in the directory and file name).
-- **s3_folder**: The folder in S3 for storing backups.
-- **backup_retention_days**: The number of days to keep local backups.
-- **s3_backup_retention_days**: The number of days to keep backups in S3.
+| Parameter                    | Description                                                 |
+|------------------------------|-------------------------------------------------------------|
+| **element_title**            | Name of the element (used in the directory and file names). |
+| **s3_folder**                | Folder in S3 for storing backups.                           |
+| **backup_retention_days**    | Number of days to retain local backups.                     |
+| **s3_backup_retention_days** | Number of days to retain backups in S3.                     |
 
 ## Usage
 
