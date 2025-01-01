@@ -15,17 +15,13 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            file: universal-backup-restore_macos_m1
+            file: reback_macos_aarch
           - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            file: universal-backup-restore_macos_intel
+            file: reback_macos_intel
           - platform: 'ubuntu-22.04'
-            args: ''
-            file: universal-backup-restore_linux
+            file: reback_linux
           - platform: 'windows-latest'
-            args: ''
-            file: universal-backup-restore.exe
+            file: reback.exe
 
     steps:
       - name: Checkout
@@ -44,8 +40,8 @@ jobs:
         if: ${{ matrix.platform != 'windows-latest' }}
         run: |
           cargo build --all --release
-          strip target/release/universal-backup-restore
-          mv target/release/universal-backup-restore target/release/${{ matrix.file }}
+          strip target/release/reback
+          mv target/release/reback target/release/${{ matrix.file }}
 
       - name: Build for Windows
         if: ${{ matrix.platform == 'windows-latest' }}
@@ -55,7 +51,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v0.1.3"
+          tag_name: "v0.2.0"
           files: |
             target/release/${{ matrix.file }}
         env:

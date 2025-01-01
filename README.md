@@ -1,4 +1,4 @@
-# Universal Backup and Restore Utility
+# Napkin Tools: Restore Backup Utility
 
 ## [Русская версия](./README-RU.md)
 
@@ -30,7 +30,7 @@ You can download the latest release from the [Releases page](https://github.com/
 3. Extract the archive and make the binary executable (if needed):
 
     ```bash
-    chmod +x universal-backup-restore
+    chmod +x reback
     ```
 
 ### Option 2: Build Locally
@@ -53,7 +53,7 @@ If you'd like to build the application yourself, follow these steps:
 3. Make the binary executable:
 
     ```bash
-    chmod +x target/release/universal-backup-restore
+    chmod +x target/release/reback
     ```
 
 4. You can now run the binary from the `target/release` folder or move it to a directory of your choice.
@@ -133,7 +133,7 @@ Each type has its own set of parameters, as defined in the configuration file.
 To start the backup process, run the following command:
 
 ```bash
-./universal-backup-restore backup
+./reback backup
 ```
 
 The utility will:
@@ -148,7 +148,7 @@ You can automate the backup process by creating a Cron job. For example, to run 
 following line to your crontab file:
 
 ```bash
-0 2 * * * /path/to/universal-backup-restore backup >> /path/to/logs/backup.log 2>&1
+0 2 * * * /path/to/reback backup >> /path/to/logs/backup.log 2>&1
 ```
 
 This Cron job will:

@@ -1,4 +1,4 @@
-# Утилита для универсального бэкапа и восстановления
+# Napkin Tools: Restore Backup Utility
 
 Эта утилита позволяет выполнять бэкапы баз данных (PostgreSQL, MongoDB) и папок локально и на Amazon S3. Она отслеживает
 срок хранения бэкапов и организует их в подкаталогах в соответствии с указанной конфигурацией. Функциональность
@@ -28,7 +28,7 @@
 3. Распакуйте архив и сделайте бинарник исполнимым (если необходимо):
 
     ```bash
-    chmod +x universal-backup-restore
+    chmod +x reback
     ```
 
 ### Вариант 2: Сборка локально
@@ -51,7 +51,7 @@
 3. Сделайте бинарник исполнимым:
 
     ```bash
-    chmod +x target/release/universal-backup-restore
+    chmod +x target/release/reback
     ```
 
 4. Теперь вы можете запустить бинарник из папки `target/release` или переместить его в выбранную директорию.
@@ -131,7 +131,7 @@
 Для запуска процесса бэкапа выполните следующую команду:
 
 ```bash
-./universal-backup-restore backup
+./reback backup
 ```
 
 Утилита:
@@ -146,7 +146,7 @@
 добавьте следующую строку в ваш файл crontab:
 
 ```bash
-0 2 * * * /path/to/universal-backup-restore backup >> /path/to/logs/backup.log 2>&1
+0 2 * * * /path/to/reback backup >> /path/to/logs/backup.log 2>&1
 ```
 
 Эта задача Cron будет:
