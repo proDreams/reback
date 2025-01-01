@@ -65,6 +65,8 @@ impl Elements {
                 db_user,
                 db_password,
             }) => {
+                let db_host = db_host.clone().unwrap_or(String::from("localhost"));
+
                 info!(
                     "Backing up PostgreSQL: host={}, port={}, db={}, user={}",
                     db_host, db_port, db_name, db_user
@@ -77,7 +79,7 @@ impl Elements {
                     "PGPASSWORD=\"{}\" pg_dump -U {} -h {} -p {} {} > {}",
                     db_password,
                     db_user,
-                    db_host.clone().unwrap_or(String::from("localhost")),
+                    db_host,
                     db_port,
                     db_name,
                     file_path.display(),
@@ -119,6 +121,7 @@ impl Elements {
                 db_password,
             }) => {
                 info!("Backing up MongoDB");
+                let db_host = db_host.clone().unwrap_or(String::from("localhost"));
 
                 let file_name = format!("{}-{}.gz", self.element_title, now);
                 file_path = path.join(&file_name);
@@ -127,7 +130,7 @@ impl Elements {
                     Some(user) => {
                         format!(
                             "mongodump --host {} --port {} --username {} --password {:?} --authenticationDatabase admin --archive={} --gzip",
-                            db_host.clone().unwrap_or(String::from("localhost")),
+                            db_host,
                             db_port,
                             user,
                             db_password,
@@ -137,7 +140,7 @@ impl Elements {
                     None => {
                         format!(
                             "mongodump --host {} --port {} --archive={} --gzip",
-                            db_host.clone().unwrap_or("localhost".to_string()),,
+                            db_host,
                             db_port,
                             file_path.display(),
                         )
@@ -203,6 +206,8 @@ impl Elements {
                 db_user,
                 db_password,
             }) => {
+                let db_host = db_host.clone().unwrap_or(String::from("localhost"));
+
                 info!(
                     "Backing up MySQL: host={}, port={}, db={}, user={}",
                     db_host, db_port, db_name, db_user
@@ -215,7 +220,7 @@ impl Elements {
                     "MYSQL_PWD={} mysqldump -u {} -h {} -P {} {} > {}",
                     db_password,
                     db_user,
-                    db_host.clone().unwrap_or(String::from("localhost")),
+                    db_host,
                     db_port,
                     db_name,
                     file_path.display(),
