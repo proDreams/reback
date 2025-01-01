@@ -22,34 +22,72 @@
       }
     },
     {
-      "element_title": "my_mongo_db",
-      "s3_folder": "mongodb_backups",
-      "backup_retention_days": 30,
-      "s3_backup_retention_days": 90,
-      "params": {
-        "type": "mongodb",
-        "db_host": "localhost",
-        "db_port": 27017,
-        "db_name": "my_mongo_database",
-        "db_user": "mongo_user",
-        "db_password": "mongo_password"
-      }
-    },
-    {
       "element_title": "my_pg_docker_db",
       "s3_folder": "postgres_docker_backups",
       "backup_retention_days": 30,
       "s3_backup_retention_days": 90,
       "params": {
         "type": "postgresql_docker",
-        "docker_container": "postgres_container",
+        "docker_container": "my_postgres_container",
         "db_name": "my_database",
         "db_user": "user",
         "db_password": "password"
       }
     },
     {
-      "element_title": "project_folder",
+      "element_title": "my_mongo_db",
+      "s3_folder": "mongo_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "mongodb",
+        "db_host": "localhost",
+        "db_port": 27017,
+        "db_user": "user",
+        "db_password": "password"
+      }
+    },
+    {
+      "element_title": "my_mongo_docker_db",
+      "s3_folder": "mongo_docker_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "mongodb_docker",
+        "docker_container": "my_mongo_container",
+        "db_user": "user",
+        "db_password": "password"
+      }
+    },
+    {
+      "element_title": "my_mysql_db",
+      "s3_folder": "mysql_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "mysql",
+        "db_host": "localhost",
+        "db_port": 3306,
+        "db_name": "my_database",
+        "db_user": "user",
+        "db_password": "password"
+      }
+    },
+    {
+      "element_title": "my_mysql_docker_db",
+      "s3_folder": "mysql_docker_backups",
+      "backup_retention_days": 30,
+      "s3_backup_retention_days": 90,
+      "params": {
+        "type": "mysql_docker",
+        "docker_container": "my_mysql_container",
+        "db_name": "my_database",
+        "db_user": "user",
+        "db_password": "password"
+      }
+    },
+    {
+      "element_title": "my_folder",
       "s3_folder": "folder_backups",
       "backup_retention_days": 30,
       "s3_backup_retention_days": 90,
