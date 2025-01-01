@@ -1,33 +1,65 @@
-# Napkin Tools: Restore Backup Utility
+# Napkin Tools: ReBack (Restore Backup Utility)
+
+![GitHub License](https://img.shields.io/github/license/proDreams/reback)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/proDreams/reback/build-release.yml)
+![GitHub Release](https://img.shields.io/github/v/release/proDreams/reback)
+![GitHub Downloads](https://img.shields.io/github/downloads/proDreams/reback/total)
 
 ## [Русская версия](./README-RU.md)
 
-This utility allows you to perform backups of databases (PostgreSQL, MongoDB) and folders, both locally and to Amazon
-S3. It tracks backup retention and organizes backups in directories based on the specified configuration. The restore
-functionality is planned for future releases.
+This utility is designed for server users who need to regularly create backups of databases (PostgreSQL, MongoDB and
+MySQL) and directories. ReBack supports saving backups both locally and in S3-compatible storage, organizing them in a
+convenient structure and automatically tracking their retention period.
+
+Future versions will include functionality for restoring backups, including full restoration or restoration of specific
+elements.
+
+## Table of contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+    - [Option 1: Download from Releases](#option-1-download-from-releases)
+    - [Option 2: Build Locally](#option-2-build-locally)
+- [Configuration](#configuration)
+    - [Configuration Parameters](#configuration-parameters)
+    - [Adding Backup Elements](#adding-backup-elements)
+    - [Types of Elements and Their Parameters](#types-of-elements-and-their-parameters)
+- [Usage](#usage)
+    - [Running as a Cron Job](#running-as-a-cron-job)
+- [Author](#author)
+- [Support](#support)
+- [License](#license)
 
 ## Features
 
-- Supports backup of PostgreSQL, MongoDB and Dockerized databases.
-- Backs up folders to local directories or Amazon S3/Minio/Other S3-like.
-- Retains backups according to the specified retention periods.
-- Logs each step in the backup process.
-- Configurable through a `settings.json` file.
+- Support for backing up PostgreSQL, MongoDB and MySQL, both locally installed and in Docker containers.
+- Backup of local directories.
+- Saving backups locally and in S3-compatible storage.
+- Organizing backups in subdirectories based on element names specified in the configuration.
+- Generating backup file names based on the element name and creation time.
+- Logging all steps of the process.
+- Configuration via the `settings.json` JSON file.
 
-## Prerequisites
+## Requirements
 
-- Docker (required for PostgreSQL Docker and MongoDB Docker backups)
-- S3 access credentials
+- Docker installed (for backing up from containers).
+- S3-compatible storage (for remote backup storage).
 
 ## Installation
 
 ### Option 1: Download from Releases
 
-You can download the latest release from the [Releases page](https://github.com/yourusername/backup-utility/releases).
+You can download the latest version from the [releases page](https://github.com/proDreams/reback/releases/latest).  
+The following platforms are supported:
 
-1. Go to the [Releases page](https://github.com/yourusername/backup-utility/releases).
+- **macOS (Intel and ARM)**: `reback_macos_intel`, `reback_macos_aarch`
+- **Linux**: `reback_linux`
+- **Windows**: `reback.exe`
+
+1. Go to the [releases page](https://github.com/proDreams/reback/releases/latest).
 2. Download the appropriate binary for your operating system.
-3. Extract the archive and make the binary executable (if needed):
+3. **For Linux and macOS**: Make the file executable by running the following command:
 
     ```bash
     chmod +x reback
@@ -35,36 +67,39 @@ You can download the latest release from the [Releases page](https://github.com/
 
 ### Option 2: Build Locally
 
-If you'd like to build the application yourself, follow these steps:
+If you want to build the application yourself, follow these steps:
 
-1. Clone the repository to your local machine:
+**Requirements:**
+
+- Installed Rust (recommended version: `rustc 1.83.0`).
+- Rust toolchain manager: `rustup 1.27.1` or higher.
+
+1. Clone the repository:
 
     ```bash
-    git clone https://github.com/yourusername/backup-utility.git
-    cd backup-utility
+    git clone https://github.com/proDreams/reback.git
+    cd reback
     ```
 
-2. Build the application (you need Rust installed):
+2. Build the application in release mode:
 
     ```bash
     cargo build --release
     ```
 
-3. Make the binary executable:
+3. Make the binary executable (for Linux/macOS):
 
     ```bash
     chmod +x target/release/reback
     ```
 
-4. You can now run the binary from the `target/release` folder or move it to a directory of your choice.
-
 ## Configuration
 
-The application is configured through a `settings.json` file, which should be placed in the same directory as the
-executable (`universal-backup-restore`). Below is an example of the configuration:
+The application is configured through the `settings.json` file, which should be located in the same directory as the
+executable file (`reback`).
 
-1. Create a `settings.json` file next to the executable (`universal-backup-restore`).
-2. Copy the following template into your `settings.json` and modify the values to suit your environment:
+1. Create the `settings.json` file next to the executable (`reback`).
+2. Copy the following template into your `settings.json` and adjust the values to match your environment:
 
 ```json
 {
@@ -75,6 +110,29 @@ executable (`universal-backup-restore`). Below is an example of the configuratio
   "s3_secret": "secret-key",
   "s3_path_style": "path",
   "backup_dir": "/tmp/backups",
+  "elements": []
+}
+```
+
+### Configuration Parameters:
+
+- **s3_endpoint**: URL of your S3-compatible storage.
+- **s3_region**: Region of your S3 storage.
+- **s3_bucket**: The name of the S3 bucket where backups will be saved.
+- **s3_access**: Access key for connecting to S3.
+- **s3_secret**: Secret key for connecting to S3.
+- **s3_path_style**: Specifies the path style for S3 (e.g., "path" or "virtual-host").
+- **backup_dir**: Absolute path to the directory where local backups will be stored. If the directory doesn't exist, it
+  will be created automatically.
+- **elements**: An array of objects, each representing an element for backup (e.g., a database or directory).
+
+### Adding Backup Elements:
+
+You can add backup elements to the `elements` array in the configuration file. Each element is an object with parameters
+for backing up a specific type. Example:
+
+```json
+{
   "elements": [
     {
       "element_title": "my_pg_db",
@@ -91,20 +149,6 @@ executable (`universal-backup-restore`). Below is an example of the configuratio
       }
     },
     {
-      "element_title": "my_mongo_db",
-      "s3_folder": "mongodb_backups",
-      "backup_retention_days": 30,
-      "s3_backup_retention_days": 90,
-      "params": {
-        "type": "mongodb",
-        "db_host": "localhost",
-        "db_port": 27017,
-        "db_name": "my_mongo_database",
-        "db_user": "mongo_user",
-        "db_password": "mongo_password"
-      }
-    },
-    {
       "element_title": "project_folder",
       "s3_folder": "folder_backups",
       "backup_retention_days": 30,
@@ -118,15 +162,56 @@ executable (`universal-backup-restore`). Below is an example of the configuratio
 }
 ```
 
-### Available Backup Types
+A complete configuration example is available in the file [settings.json.example](settings.json.example).
 
-- **Postgresql**: PostgreSQL database backup.
-- **PostgresqlDocker**: PostgreSQL database backup from a Docker container.
-- **Mongodb**: MongoDB database backup.
-- **MongodbDocker**: MongoDB database backup from a Docker container.
-- **Folder**: Backup of a local folder.
+### Types of Elements and Their Parameters:
 
-Each type has its own set of parameters, as defined in the configuration file.
+- `postgresql`: Backup of a PostgreSQL database. For this type, specify:
+    - `db_host` (optional): Database host. Default is `localhost`.
+    - `db_port`: Connection port.
+    - `db_name`: Database name.
+    - `db_user`: Database user.
+    - `db_password`: User password.
+
+- `postgresql_docker`: Backup of a PostgreSQL database from a Docker container. For this type, specify:
+    - `docker_container`: Name of the Docker container with PostgreSQL.
+    - `db_name`: Database name.
+    - `db_user`: Database user.
+    - `db_password`: User password.
+
+- `mongodb`: Backup of a MongoDB database. For this type, specify:
+    - `db_host` (optional): Database host. Default is `localhost`.
+    - `db_port`: Connection port.
+    - `db_user` (optional): Database user.
+    - `db_password` (optional): User password.
+
+- `mongodb_docker`: Backup of a MongoDB database from a Docker container. For this type, specify:
+    - `docker_container`: Name of the Docker container with MongoDB.
+    - `db_user` (optional): Database user.
+    - `db_password` (optional): User password.
+
+- `mysql`: Backup of a MySQL database. For this type, specify:
+    - `db_host` (optional): Database host. Default is `localhost`.
+    - `db_port`: Connection port.
+    - `db_name`: Database name.
+    - `db_user`: Database user.
+    - `db_password`: User password.
+
+- `mysql_docker`: Backup of a MySQL database from a Docker container. For this type, specify:
+    - `docker_container`: Name of the Docker container with MySQL.
+    - `db_name`: Database name.
+    - `db_user`: Database user.
+    - `db_password`: User password.
+
+- `folder`: Backup of a local directory. For this type, specify:
+    - `target_path`: Path to the directory to be backed up.
+
+Each element also includes:
+
+- **element_title**: The name of the element (for use in the directory and file name).
+- **s3_folder**: The folder in S3 for storing backups.
+- **backup_retention_days**: The number of days to keep local backups.
+- **s3_backup_retention_days**: The number of days to keep backups in S3.
 
 ## Usage
 
@@ -136,11 +221,8 @@ To start the backup process, run the following command:
 ./reback backup
 ```
 
-The utility will:
-
-1. Backup databases and folders locally and to S3.
-2. Organize backups in subdirectories based on the configuration.
-3. Retain backups according to the specified retention settings.
+**Important**: The `backup` argument is required to start the backup process. Without it, the program will not run and
+you will get an error.
 
 ### Running as a Cron Job
 
@@ -153,33 +235,37 @@ following line to your crontab file:
 
 This Cron job will:
 
-- Execute the `universal-backup-restore backup` command at 2:00 AM every day.
+- Run the `./reback backup` command every day at 2:00 AM.
 - Redirect both standard output and error output to a log file (`backup.log`).
 
-To edit your crontab, run:
+To edit your crontab, use the command:
 
 ```bash
 crontab -e
 ```
 
-Then add the Cron job line. Make sure the path to the `universal-backup-restore` binary and log file is correct.
-
-## Backup Retention
-
-Backups are retained based on the configuration in the `settings.json` file. The `backup_retention_days` parameter
-specifies how long backups are kept locally, while the `s3_backup_retention_days` parameter specifies how long backups
-are kept in S3.
+Then, add the Cron job line. Make sure the path to the `reback` binary and the log file are correct.
 
 ## Author
 
-This project was created and is maintained by Ivan Ashikhmin.
-Feel free to open an issue or contribute to the project.
+Program author: Ivan Ashikhmin  
+Telegram for contact: [https://t.me/proDreams](https://t.me/proDreams)
 
-## Donate
+The program was created as part of the "Code on a Napkin" project.
 
-If you appreciate this project and want to support further development, consider donating:
+- Website: [https://pressanybutton.ru/](https://pressanybutton.ru/)
+- Telegram channel: [https://t.me/press_any_button](https://t.me/press_any_button)
 
-Donate via TON: `UQBU8rJEfUcBvJUbz6NbXiWxaOO_NoXHK_pXOWv7qsOBWbFp`
+## Support
 
-Your support helps keep the project alive and improve future features!
+If you like this project and want to support its further development, consider donating:
 
+- Donation via TON: `UQBU8rJEfUcBvJUbz6NbXiWxaOO_NoXHK_pXOWv7qsOBWbFp`
+- [Support on Boosty](https://boosty.to/prodream)
+- [In our Telegram bot for Telegram Stars](https://t.me/press_any_button_bot?start=donate)
+
+Your support helps the project grow and improve future features!
+
+## License
+
+This project is licensed under the MIT License. Details can be found in the [LICENSE](LICENSE) file.
