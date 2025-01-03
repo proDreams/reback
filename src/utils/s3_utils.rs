@@ -1,10 +1,10 @@
-use chrono::{Duration, Local, NaiveDateTime};
+use chrono::{DateTime, Duration, Local};
+use log::{info, warn};
 use s3::bucket::Bucket;
 use std::error::Error;
+use std::path::Path;
 use tokio::fs::File;
 use tokio::io::BufReader;
-use std::path::Path;
-use log::info;
 
 /// Uploads a file to an S3 bucket asynchronously.
 ///
@@ -50,7 +50,6 @@ pub async fn upload_file_to_s3(
     let file = File::open(path).await?;
     let mut reader = BufReader::new(file);
 
-
     bucket
         .put_object_stream(&mut reader, s3_path.clone())
         .await
@@ -62,37 +61,41 @@ pub async fn upload_file_to_s3(
 
 /// Checks for outdated backups in an S3 bucket and deletes them if they exceed the retention period.
 ///
-/// This function lists the files in the specified S3 folder and checks their timestamps based on their
-/// filenames. If a file's timestamp indicates it is older than the specified retention period, the file
-/// is deleted from the bucket.
+/// This function lists the files in the specified S3 folder and checks their timestamps based on the
+/// `last_modified` property provided by the S3 API. If a file's modification time indicates it is older
+/// than the specified retention period, the file is deleted from the bucket.
 ///
 /// # Arguments
 /// - `bucket` - The S3 bucket where the backups are stored.
-/// - `title` - The prefix used to identify the backup files (typically the name of the backup element).
 /// - `folder` - The S3 folder containing the backup files.
 /// - `retention` - The retention period in days. Files older than this period will be deleted.
 ///
 /// # Returns
 /// - `Ok(())` if the outdated backups were successfully deleted.
-/// - `Err(Box<dyn Error>)` if an error occurs during the process, such as issues with listing objects,
-///   parsing timestamps, or deleting files.
+/// - `Err(Box<dyn Error>)` if an error occurs during the process, such as issues with listing objects
+///   or deleting files.
 ///
 /// # Errors
 /// This function will return an error if:
 /// - Listing the objects in the S3 bucket fails.
-/// - Parsing the file timestamps or deleting a file fails.
+/// - Parsing the `last_modified` timestamp of a file fails.
+/// - Deleting a file fails due to insufficient permissions or other issues.
+///
+/// # Notes
+/// - The `last_modified` property is parsed using RFC 3339 format, which is the standard format
+///   for timestamps in S3 metadata.
+/// - If the `last_modified` timestamp cannot be parsed for a file, a warning is logged, and the file
+///   is skipped without affecting the rest of the process.
 ///
 /// # Example
 /// ```rust
 /// let bucket: Bucket = /* Obtain the S3 bucket instance */;
-/// let title = "my_backup".to_string();
 /// let folder = "backup_folder".to_string();
 /// let retention = 30; // Delete backups older than 30 days
-/// check_outdated_s3_backups(&bucket, &title, &folder, &retention).await?;
+/// check_outdated_s3_backups(&bucket, &folder, &retention).await?;
 /// ```
 pub async fn check_outdated_s3_backups(
     bucket: &Bucket,
-    title: &String,
     folder: &String,
     retention: &u64,
 ) -> Result<(), Box<dyn Error>> {
@@ -105,26 +108,19 @@ pub async fn check_outdated_s3_backups(
         let contents = result.contents;
 
         for object in contents {
-            let file_path = object.key;
-            if let Some(file_name) = file_path.strip_prefix(&prefix) {
-                if file_name.starts_with(title) {
-                    if let Some(date_str) = file_name.strip_prefix(&format!("{}-", title)) {
-                        if let Some(date_str) = date_str.split('.').next() {
-                            if let Ok(file_date) =
-                                NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d_%H-%M-%S")
-                            {
-                                if let Some(file_date_local) =
-                                    file_date.and_local_timezone(Local).single()
-                                {
-                                    let file_age = now - file_date_local;
-                                    if file_age > Duration::days(*retention as i64) {
-                                        bucket.delete_object(file_path).await?;
-                                    }
-                                }
-                            }
-                        }
-                    }
+            let last_modified_str = &object.last_modified;
+
+            if let Ok(last_modified) = DateTime::parse_from_rfc3339(last_modified_str) {
+                let file_age = now - last_modified.with_timezone(&Local);
+                if file_age > Duration::days(*retention as i64) {
+                    bucket.delete_object(&object.key).await?;
+                    info!("Deleted outdated backup: {}", object.key);
                 }
+            } else {
+                warn!(
+                    "Failed to parse last_modified for object {}: {}",
+                    object.key, last_modified_str
+                );
             }
         }
     }
