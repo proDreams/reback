@@ -1,8 +1,15 @@
 use crate::structures::settings::Settings;
 use crate::utils::process_backup::start_backup_process;
 use crate::utils::process_restore::{restore_all_process, restore_selected_process};
-use log::error;
+use log::{error, LevelFilter};
 use std::env;
+use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
+use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
+use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
+use log4rs::append::rolling_file::RollingFileAppender;
+use log4rs::Config;
+use log4rs::config::{Appender, Root};
+use log4rs::encode::pattern::PatternEncoder;
 
 mod structures;
 mod utils;
@@ -60,8 +67,35 @@ mod utils;
 /// tasks such as backup or restore operations to be run asynchronously.
 #[tokio::main]
 async fn main() {
-    env::set_var("RUST_LOG", "info");
-    env_logger::init();
+    let exe_path = env::current_exe().unwrap();
+    let exe_dir = exe_path.parent().unwrap();
+
+    let log_dir = exe_dir.join("reback_logs");
+    let log_file = log_dir.join("reback.log");
+
+    let size_trigger = SizeTrigger::new(10 * 1024 * 1024);
+
+    let roller = FixedWindowRoller::builder()
+        .build(&format!("{}/reback.{{}}.log", log_dir.to_str().unwrap()), 5)
+        .unwrap();
+
+    let policy = CompoundPolicy::new(Box::new(size_trigger), Box::new(roller));
+
+    let file_appender = RollingFileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} [{l}] {m}{n}")))
+        .build(log_file, Box::new(policy))
+        .unwrap();
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("file", Box::new(file_appender)))
+        .build(
+            Root::builder()
+                .appender("file")
+                .build(LevelFilter::Info),
+        )
+        .unwrap();
+
+    log4rs::init_config(config).unwrap();
 
     let args: Vec<String> = env::args().collect();
 
