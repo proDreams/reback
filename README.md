@@ -59,16 +59,16 @@ Additionally, ReBack supports restoring backups from S3 storage to the elements 
    `wget/curl`:
     ```bash
     # Linux
-    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_linux -O reback
+    wget https://github.com/proDreams/reback/releases/download/v0.3.1/reback_linux -O reback
     
     # macOS Intel
-    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_macos_intel -O reback
+    wget https://github.com/proDreams/reback/releases/download/v0.3.1/reback_macos_intel -O reback
     
     # macOS ARM
-    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_macos_aarch -O reback
+    wget https://github.com/proDreams/reback/releases/download/v0.3.1/reback_macos_aarch -O reback
     
     # Windows
-    curl -L -o reback.exe https://github.com/proDreams/reback/releases/download/v0.3.0/reback.exe
+    curl -L -o reback.exe https://github.com/proDreams/reback/releases/download/v0.3.1/reback.exe
     ```
 
 2. **For Linux and macOS**: Make the file executable by running the following command:

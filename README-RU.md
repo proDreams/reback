@@ -57,16 +57,16 @@ PostgreSQL, MongoDB и MySQL) и директорий. ReBack поддержив
    `wget/curl`:
     ```bash
     # Linux
-    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_linux -O reback
+    wget https://github.com/proDreams/reback/releases/download/v0.3.1/reback_linux -O reback
     
     # macOS Intel
-    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_macos_intel -O reback
+    wget https://github.com/proDreams/reback/releases/download/v0.3.1/reback_macos_intel -O reback
     
     # macOS ARM
-    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_macos_aarch -O reback
+    wget https://github.com/proDreams/reback/releases/download/v0.3.1/reback_macos_aarch -O reback
     
     # Windows
-    curl -L -o reback.exe https://github.com/proDreams/reback/releases/download/v0.3.0/reback.exe
+    curl -L -o reback.exe https://github.com/proDreams/reback/releases/download/v0.3.1/reback.exe
     ```
 
 2. **Для Linux и macOS**: Сделайте файл исполнимым, выполнив команду:
