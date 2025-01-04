@@ -1,7 +1,7 @@
 use crate::structures::elements::Elements;
 use crate::structures::settings::Settings;
 use crate::utils::s3_utils::get_file_from_s3;
-use log::error;
+use log::{error, warn};
 use s3::Bucket;
 
 /// Restores specified elements from an S3 bucket to the local system asynchronously.
@@ -69,6 +69,10 @@ async fn restore_elements(bucket: &Bucket, restore_dir: &String, elements: &[&El
 /// restore_all_process(&settings, &bucket).await;
 /// ```
 pub async fn restore_all_process(settings: &Settings, bucket: &Bucket) {
+    if settings.elements.is_empty() {
+        warn!("Elements list is empty");
+        return;
+    }
     let restore_dir = format!("{}/to_restore", &settings.backup_dir);
 
     restore_elements(
