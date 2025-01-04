@@ -71,7 +71,6 @@ pub async fn start_backup_process(settings: &Settings, bucket: &Bucket) {
 
         if let Err(e) = check_outdated_local_backups(
             &path,
-            &element.element_title,
             &element.backup_retention_days,
         ) {
             error!(
@@ -83,7 +82,6 @@ pub async fn start_backup_process(settings: &Settings, bucket: &Bucket) {
 
         if let Err(e) = check_outdated_s3_backups(
             &bucket,
-            &element.element_title,
             &element.s3_folder,
             &element.s3_backup_retention_days,
         )

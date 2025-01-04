@@ -2,7 +2,7 @@ use crate::structures::elements::Elements;
 use s3::creds::Credentials;
 use s3::{Bucket, Region};
 use serde::Deserialize;
-use std::{fs, io};
+use std::{env, fs, io};
 use log::error;
 
 /// Represents the application's configuration settings.
@@ -49,9 +49,9 @@ pub enum S3PathStyle {
 impl Settings {
     /// Reads the application's configuration from a JSON file.
     ///
-    /// This function attempts to read the `settings.json` file, deserialize its content into
-    /// a `Settings` instance, and return it. If the file is not found or cannot be parsed,
-    /// an appropriate error is returned.
+    /// This function attempts to read the `settings.json` file located in the same directory
+    /// as the executable, deserialize its content into a `Settings` instance, and return it.
+    /// If the file is not found or cannot be parsed, an appropriate error is returned.
     ///
     /// # Returns
     /// - `Ok(Settings)` if the file is successfully read and parsed into a `Settings` instance.
@@ -67,7 +67,12 @@ impl Settings {
     /// let settings = Settings::from_file().expect("Failed to load settings");
     /// ```
     pub fn from_file() -> io::Result<Settings> {
-        let file_content = fs::read_to_string("settings.json")?;
+        let exe_path = env::current_exe()?;
+        let exe_dir = exe_path.parent().unwrap();
+
+        let settings_path = exe_dir.join("settings.json");
+
+        let file_content = fs::read_to_string(settings_path)?;
 
         let settings: Settings = match serde_json::from_str(&file_content) {
             Ok(data) => data,

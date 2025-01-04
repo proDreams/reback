@@ -1,5 +1,6 @@
 use crate::structures::settings::Settings;
 use crate::utils::process_backup::start_backup_process;
+use crate::utils::process_restore::{restore_all_process, restore_selected_process};
 use log::error;
 use std::env;
 
@@ -8,42 +9,55 @@ mod utils;
 
 /// The entry point of the application.
 ///
-/// This function initializes the settings, validates the command-line arguments,
-/// and performs the appropriate operation based on the provided argument.
+/// This function serves as the main execution point for the program. It initializes logging, reads command-line
+/// arguments, loads settings from a configuration file, creates an S3 bucket instance, and performs the operation
+/// based on the provided argument.
 ///
 /// # Arguments
 /// The function expects at least one command-line argument in addition to the program name:
 /// - `"backup"`: Starts the backup process using the provided settings and S3 bucket configuration.
+/// - `"restore"`: Initiates the restore process. If no additional arguments are provided, it restores all backups.
+///   If a backup file is specified, it restores the selected backup.
 ///
 /// # Behavior
-/// - Reads settings from a configuration file using `Settings::from_file()`.
+/// - Initializes logging with `env_logger::init()`.
+/// - Reads and validates command-line arguments.
+/// - Loads settings from a configuration file using `Settings::from_file()`.
 /// - Creates an S3 bucket instance using `Settings::get_bucket()`.
-/// - Validates the command-line arguments and executes the corresponding action.
-/// - Logs errors to `stderr` if initialization or validation fails.
+/// - Based on the command-line argument, either initiates the backup process or restores the data from the S3 bucket.
+///
+/// # Returns
+/// This function does not return any value. It exits after performing the specified operation or logging an error.
+///
+/// # Errors
+/// This function handles and logs the following errors:
+/// - No command-line argument is provided.
+/// - Failure to read or parse the settings file.
+/// - Failure to create the S3 bucket instance.
+/// - An unknown command-line argument is provided.
+///
+/// # Execution Flow
+/// The `main` function follows this sequence:
+/// 1. Initializes logging with `env_logger::init()`.
+/// 2. Reads and validates the command-line arguments.
+/// 3. Loads settings from a configuration file using `Settings::from_file()`.
+/// 4. Creates an S3 bucket instance using `Settings::get_bucket()`.
+/// 5. Executes the corresponding action based on the command-line argument (`"backup"` or `"restore"`).
+/// 6. Logs errors and exits if any issues occur during initialization or execution.
 ///
 /// # Example
-/// Run the program with the `"backup"` argument to start the backup process:
+/// To start the backup process, run the program with the `"backup"` argument:
 /// ```sh
 /// cargo run backup
 /// ```
+/// To restore backups, use the `"restore"` argument:
+/// ```sh
+/// cargo run restore
+/// ```
 ///
-/// # Errors
-/// - If no command-line argument is provided, the function logs an error and exits.
-/// - If the settings file cannot be read or parsed, the function logs an error and exits.
-/// - If the S3 bucket initialization fails, the function logs an error and exits.
-/// - If an unknown argument is provided, the function logs an error and exits.
-///
-/// # Execution Flow
-/// The main function follows this execution flow:
-/// 1. Initializes logging with `env_logger::init()`.
-/// 2. Reads and validates the command-line arguments.
-/// 3. Loads settings from a configuration file (`Settings::from_file()`).
-/// 4. Creates an S3 bucket instance (`Settings::get_bucket()`).
-/// 5. Executes the corresponding action based on the argument (`"backup"`).
-/// 6. Logs and exits if any error occurs during initialization or execution.
-///
+/// # Notes
 /// This function uses the `#[tokio::main]` macro to enable asynchronous execution, allowing for
-/// the asynchronous backup process.
+/// tasks such as backup or restore operations to be run asynchronously.
 #[tokio::main]
 async fn main() {
     env::set_var("RUST_LOG", "info");
@@ -75,6 +89,13 @@ async fn main() {
     match args[1].as_str() {
         "backup" => {
             start_backup_process(&settings, &bucket).await;
+        }
+        "restore" => {
+            if args.len() > 2 {
+                restore_selected_process(&settings, &bucket, &args).await
+            } else {
+                restore_all_process(&settings, &bucket).await;
+            }
         }
         _ => {
             error!("Unknown argument provided. Exiting.");
