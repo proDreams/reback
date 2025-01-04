@@ -38,6 +38,10 @@ use std::path::Path;
 /// start_backup_process(&settings, &bucket).await;
 /// ```
 pub async fn start_backup_process(settings: &Settings, bucket: &Bucket) {
+    if settings.elements.is_empty() {
+        warn!("Elements list is empty");
+        return;
+    }
     for element in &settings.elements {
         let path_str = format!("{}/{}", settings.backup_dir, element.element_title);
         let path = Path::new(&path_str);
