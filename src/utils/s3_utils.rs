@@ -1,10 +1,14 @@
+use anyhow::Result;
 use chrono::{DateTime, Duration, Local};
-use log::{info, warn};
+use log::{error, info, warn};
 use s3::bucket::Bucket;
+use s3::error::S3Error;
+use s3::serde_types::ListBucketResult;
 use std::error::Error;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 use tokio::fs::File;
-use tokio::io::BufReader;
+use tokio::io::{BufReader};
 
 /// Uploads a file to an S3 bucket asynchronously.
 ///
@@ -59,39 +63,81 @@ pub async fn upload_file_to_s3(
     Ok(())
 }
 
-/// Checks for outdated backups in an S3 bucket and deletes them if they exceed the retention period.
+/// Retrieves a list of objects from an S3 bucket in a specified folder asynchronously.
 ///
-/// This function lists the files in the specified S3 folder and checks their timestamps based on the
-/// `last_modified` property provided by the S3 API. If a file's modification time indicates it is older
-/// than the specified retention period, the file is deleted from the bucket.
+/// This function constructs a prefix using the provided `folder` and attempts to list the objects
+/// in the S3 bucket under that prefix. It uses the `bucket.list()` method to retrieve the object list,
+/// and if the request is successful, it returns the list of objects. If any error occurs during
+/// the operation, the error is logged, and the function returns the error.
+///
+/// # Arguments
+/// - `bucket` - The S3 bucket from which the list of objects will be retrieved.
+/// - `folder` - The folder within the S3 bucket whose objects are to be listed.
+///
+/// # Returns
+/// - `Ok(Vec<ListBucketResult>)` containing the list of objects in the specified folder if successful.
+/// - `Err(S3Error)` if the request fails, with an error describing the failure.
+///
+/// # Errors
+/// This function will return an error if:
+/// - The request to list the objects from the S3 bucket fails.
+///
+/// # Example
+/// ```rust
+/// let bucket: Bucket = /* Obtain the S3 bucket instance */;
+/// let folder = "path/to/folder".to_string();
+/// match get_s3_objects_list(&bucket, &folder).await {
+///     Ok(objects) => println!("Objects: {:?}", objects),
+///     Err(e) => eprintln!("Error: {}", e),
+/// }
+/// ```
+pub async fn get_s3_objects_list(
+    bucket: &Bucket,
+    folder: &String,
+) -> Result<Vec<ListBucketResult>, S3Error> {
+    let prefix = format!("{}/", folder);
+
+    // Попробуем получить список объектов
+    match bucket.list(prefix.clone(), None).await {
+        Ok(list) => Ok(list),
+        Err(e) => {
+            error!("Failed to get list of s3 objects: {}", e);
+            Err(e)
+        }
+    }
+}
+
+/// Checks for outdated backups in an S3 bucket and deletes them if they exceed the specified retention period.
+///
+/// This function lists the objects in the specified S3 folder and checks each object's modification timestamp.
+/// If an object’s modification time is older than the specified retention period (in days), it deletes the object
+/// from the S3 bucket. The modification timestamp is retrieved from the `last_modified` property of each object.
 ///
 /// # Arguments
 /// - `bucket` - The S3 bucket where the backups are stored.
-/// - `folder` - The S3 folder containing the backup files.
-/// - `retention` - The retention period in days. Files older than this period will be deleted.
+/// - `folder` - The folder within the S3 bucket containing the backup files to be checked.
+/// - `retention` - The retention period in days. Any file older than this period will be deleted.
 ///
 /// # Returns
-/// - `Ok(())` if the outdated backups were successfully deleted.
-/// - `Err(Box<dyn Error>)` if an error occurs during the process, such as issues with listing objects
-///   or deleting files.
+/// - `Ok(())` if the outdated backups were successfully checked and deleted.
+/// - `Err(Box<dyn Error>)` if an error occurs, such as an issue with listing objects or deleting files.
 ///
 /// # Errors
 /// This function will return an error if:
 /// - Listing the objects in the S3 bucket fails.
 /// - Parsing the `last_modified` timestamp of a file fails.
-/// - Deleting a file fails due to insufficient permissions or other issues.
+/// - Deleting a file fails due to permissions or other issues.
 ///
 /// # Notes
-/// - The `last_modified` property is parsed using RFC 3339 format, which is the standard format
-///   for timestamps in S3 metadata.
-/// - If the `last_modified` timestamp cannot be parsed for a file, a warning is logged, and the file
-///   is skipped without affecting the rest of the process.
+/// - The `last_modified` property is expected to be in RFC 3339 format, which is the standard format for timestamps
+///   in S3 metadata. If parsing fails, the file is skipped, and a warning is logged.
+/// - Files older than the specified retention period are deleted from the S3 bucket.
 ///
 /// # Example
 /// ```rust
 /// let bucket: Bucket = /* Obtain the S3 bucket instance */;
 /// let folder = "backup_folder".to_string();
-/// let retention = 30; // Delete backups older than 30 days
+/// let retention = 30; // Retention period of 30 days
 /// check_outdated_s3_backups(&bucket, &folder, &retention).await?;
 /// ```
 pub async fn check_outdated_s3_backups(
@@ -100,9 +146,13 @@ pub async fn check_outdated_s3_backups(
     retention: &u64,
 ) -> Result<(), Box<dyn Error>> {
     let now = Local::now();
-    let prefix = format!("{}/", folder);
 
-    let results = bucket.list(prefix.clone(), None).await?;
+    let results = match get_s3_objects_list(bucket, folder).await {
+        Ok(results) => results,
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
 
     for result in results {
         let contents = result.contents;
@@ -128,4 +178,145 @@ pub async fn check_outdated_s3_backups(
     info!("Check and delete outdated S3 backups completed");
 
     Ok(())
+}
+
+/// Finds the latest backup file in an S3 bucket folder based on the modification date.
+///
+/// This function lists all objects in the specified S3 folder and checks the `last_modified` timestamp
+/// of each object to determine the most recent backup file. The latest file is returned as the file key (name).
+/// If no backups are found in the folder, an error is returned.
+///
+/// # Arguments
+/// - `bucket` - The S3 bucket from which the backup files are being checked.
+/// - `folder` - The folder within the S3 bucket to search for backup files.
+///
+/// # Returns
+/// - `Ok(String)` containing the key (name) of the latest backup file if found.
+/// - `Err(Box<dyn Error>)` if an error occurs, such as failing to list objects or parse timestamps.
+///
+/// # Errors
+/// This function will return an error if:
+/// - Listing the objects in the S3 bucket fails.
+/// - Parsing the `last_modified` timestamp of a file fails.
+/// - No backups are found in the folder.
+///
+/// # Example
+/// ```rust
+/// let bucket: Bucket = /* Obtain the S3 bucket instance */;
+/// let folder = "backup_folder".to_string();
+/// match find_latest_s3_backup(&bucket, &folder).await {
+///     Ok(latest_backup) => println!("Latest backup: {}", latest_backup),
+///     Err(e) => eprintln!("Error: {}", e),
+/// }
+/// ```
+pub async fn find_latest_s3_backup(
+    bucket: &Bucket,
+    folder: &String,
+) -> Result<String, Box<dyn Error>> {
+    let results = match get_s3_objects_list(bucket, folder).await {
+        Ok(results) => results,
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
+
+    let mut latest_backup: Option<(String, DateTime<Local>)> = None;
+
+    for result in results {
+        let contents = result.contents;
+
+        for object in contents {
+            let last_modified_str = &object.last_modified;
+
+            if let Ok(last_modified) = DateTime::parse_from_rfc3339(last_modified_str) {
+                let last_modified_local = last_modified.with_timezone(&Local);
+
+                if latest_backup
+                    .as_ref()
+                    .map_or(true, |(_, latest_date)| last_modified_local > *latest_date)
+                {
+                    latest_backup = Some((object.key.clone(), last_modified_local));
+                }
+            } else {
+                warn!(
+                    "Failed to parse last_modified for object {}: {}",
+                    object.key, last_modified_str
+                );
+            }
+        }
+    }
+
+    if let Some((key, _)) = latest_backup {
+        info!("Latest backup found: {})", key);
+        Ok(key)
+    } else {
+        info!("No backups found in folder: {}", folder);
+        Err("No backups found".into())
+    }
+}
+
+/// Downloads the latest backup file from an S3 bucket to a local directory.
+///
+/// This function first retrieves the latest backup file by calling `find_latest_s3_backup` and then
+/// downloads the file from the S3 bucket to the specified local path. If the local directory doesn't exist,
+/// it is created before downloading the file.
+///
+/// # Arguments
+/// - `bucket` - The S3 bucket containing the backup file to be downloaded.
+/// - `path` - The local directory where the backup file will be saved.
+/// - `file_key` - The folder in the S3 bucket where the backup files are stored (used to find the latest backup).
+///
+/// # Returns
+/// - `Ok(PathBuf)` containing the path to the downloaded file if successful.
+/// - `Err(Box<dyn Error>)` if any error occurs during the file download or directory creation.
+///
+/// # Errors
+/// This function will return an error if:
+/// - The latest backup cannot be found in the specified folder.
+/// - The directory cannot be created.
+/// - The file download fails due to S3 or network issues.
+///
+/// # Example
+/// ```rust
+/// let bucket: Bucket = /* Obtain the S3 bucket instance */;
+/// let path = "local_backup_dir".to_string();
+/// let folder = "backup_folder".to_string();
+/// match get_file_from_s3(&bucket, &path, &folder).await {
+///     Ok(file_path) => println!("Backup downloaded to: {}", file_path.display()),
+///     Err(e) => eprintln!("Error: {}", e),
+/// }
+/// ```
+pub async fn get_file_from_s3(
+    bucket: &Bucket,
+    path: &String,
+    file_key: &String,
+) -> Result<PathBuf, Box<dyn Error>> {
+    let file_key = find_latest_s3_backup(&bucket, &file_key).await?;
+
+    let file_path = format!("{}/{}", &path, file_key);
+    let path = Path::new(&file_path);
+
+    if let Some(parent_dir) = path.parent() {
+        if !parent_dir.exists() {
+            if let Err(e) = fs::create_dir_all(parent_dir) {
+                error!(
+                    "Failed to create backup directory {}: {}",
+                    parent_dir.display(),
+                    e
+                );
+                return Err(e.into());
+            }
+            info!("Created backup directory {}", parent_dir.display());
+        }
+    }
+
+    let mut async_output_file = File::create(&path).await?;
+
+    bucket
+        .get_object_to_writer(&file_key, &mut async_output_file)
+        .await?;
+
+    info!("File downloaded successfully: {}", &file_key);
+
+    Ok(PathBuf::from(path))
 }
