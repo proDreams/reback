@@ -1,4 +1,4 @@
-# Napkin Tools: ReBack (Restore Backup Utility)
+# Napkin Tools: ReBack (Restore/Backup Utility)
 
 ![GitHub License](https://img.shields.io/github/license/proDreams/reback)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/proDreams/reback/build-release.yml)
@@ -7,28 +7,30 @@
 
 ## [Русская версия](./README-RU.md)
 
-This utility is designed for server users who need to regularly create backups of databases (PostgreSQL, MongoDB and
+This utility is designed for server users who need to regularly create backups of databases (PostgreSQL, MongoDB, and
 MySQL) and directories. ReBack supports saving backups both locally and in S3-compatible storage, organizing them in a
-convenient structure and automatically tracking their retention period.
+convenient structure, and automatically tracking their retention period.
 
-Future versions will include functionality for restoring backups, including full restoration or restoration of specific
-elements.
+Additionally, ReBack supports restoring backups from S3 storage to the elements specified in the configuration.
 
 ## Table of contents
 
 - [Features](#features)
 - [Requirements](#requirements)
-- [Installation](#installation)
+- [Download](#download)
     - [Option 1: Download from Releases](#option-1-download-from-releases)
     - [Option 2: Build Locally](#option-2-build-locally)
 - [Configuration](#configuration)
-    - [Configuration Parameters](#configuration-parameters)
-    - [Adding Backup Elements](#adding-backup-elements)
-    - [Available Element Types](#available-element-types)
-    - [Backup Element Parameters Table](#backup-element-parameters-table)
-    - [Common Parameters for All Elements](#common-parameters-for-all-elements)
+    - [Required Parameters](#required-parameters)
+    - [Elements for Backup/Restoration](#elements-for-backuprestoration)
+        - [Available Element Types and Their Parameters](#available-element-types-and-their-parameters)
+        - [Common Parameters for All Elements](#common-parameters-for-all-elements)
 - [Usage](#usage)
-    - [Running as a Cron Job](#running-as-a-cron-job)
+    - [Backup](#backup)
+        - [Cron Task](#cron-task)
+    - [Restore Backup](#restore-backup)
+        - [Restore All Backups](#restore-all-backups)
+        - [Restore Specific Elements](#restore-specific-elements)
 - [Author](#author)
 - [Support](#support)
 - [License](#license)
@@ -40,32 +42,42 @@ elements.
 - Saving backups locally and in S3-compatible storage.
 - Organizing backups in subdirectories based on element names specified in the configuration.
 - Generating backup file names based on the element name and creation time.
-- Logging all steps of the process.
-- Configuration via the `settings.json` JSON file.
+- Logging all process steps to a file with rotation upon reaching 10MB.
+- Configuration via the `settings.json` file.
+- Restoration of backups from S3 storage.
 
 ## Requirements
 
-- Docker installed (for backing up from containers).
-- S3-compatible storage (for remote backup storage).
+- Installed Docker (for saving/restoring from containers).
+- S3-compatible storage (for remote saving/restoring of backups).
 
-## Installation
+## Download
 
 ### Option 1: Download from Releases
 
-You can download the latest version from the [releases page](https://github.com/proDreams/reback/releases/latest).  
-The following platforms are supported:
+1. Download the latest version from the [releases page](https://github.com/proDreams/reback/releases/latest) or use
+   `wget/curl`:
+    ```bash
+    # Linux
+    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_linux -O reback
+    
+    # macOS Intel
+    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_macos_intel -O reback
+    
+    # macOS ARM
+    wget https://github.com/proDreams/reback/releases/download/v0.3.0/reback_macos_aarch -O reback
+    
+    # Windows
+    curl -L -o reback.exe https://github.com/proDreams/reback/releases/download/v0.3.0/reback.exe
+    ```
 
-- **macOS (Intel and ARM)**: `reback_macos_intel`, `reback_macos_aarch`
-- **Linux**: `reback_linux`
-- **Windows**: `reback.exe`
-
-1. Go to the [releases page](https://github.com/proDreams/reback/releases/latest).
-2. Download the appropriate binary for your operating system.
-3. **For Linux and macOS**: Make the file executable by running the following command:
+2. **For Linux and macOS**: Make the file executable by running the following command:
 
     ```bash
     chmod +x reback
     ```
+
+3. Create and configure `settings.json`. For more details, see [Configuration](#configuration).
 
 ### Option 2: Build Locally
 
@@ -73,7 +85,7 @@ If you want to build the application yourself, follow these steps:
 
 **Requirements:**
 
-- Installed Rust (recommended version: `rustc 1.83.0`).
+- [Installed Rust](https://www.rust-lang.org/tools/install) (recommended version: `rustc 1.83.0`).
 - Rust toolchain manager: `rustup 1.27.1` or higher.
 
 1. Clone the repository:
@@ -89,19 +101,41 @@ If you want to build the application yourself, follow these steps:
     cargo build --release
     ```
 
-3. Make the binary executable (for Linux/macOS):
+3. **For Linux and macOS**. Make the binary executable:
 
     ```bash
     chmod +x target/release/reback
     ```
+4. The executable file is located in the `target/release/reback` directory.
+
+5. Create and configure `settings.json`. For more details, see [Configuration](#configuration).
 
 ## Configuration
 
-The application is configured through the `settings.json` file, which should be located in the same directory as the
-executable file (`reback`).
+The application is configured through the `settings.json` file.
 
-1. Create the `settings.json` file next to the executable (`reback`).
-2. Copy the following template into your `settings.json` and adjust the values to match your environment:
+**Attention!** The `settings.json` file must be in the same directory as the executable file!
+
+1. Download the configuration template file:
+    ```bash
+    # Linux and macOS
+    wget https://raw.githubusercontent.com/proDreams/reback/main/settings.json.example -O settings.json
+
+    # Windows
+    curl -L -o settings.json https://raw.githubusercontent.com/proDreams/reback/main/settings.json.example
+    ```
+2. Open the file for editing:
+    ```bash
+    # Linux and macOS
+    nano settings.json
+    
+    # Windows
+    notepad settings.json
+    ```
+
+3. Configure the file for your environment and save it.
+
+### Required parameters
 
 ```json
 {
@@ -116,8 +150,6 @@ executable file (`reback`).
 }
 ```
 
-### Configuration Parameters:
-
 - **s3_endpoint**: URL of your S3-compatible storage.
 - **s3_region**: Region of your S3 storage.
 - **s3_bucket**: The name of the S3 bucket where backups will be saved.
@@ -128,45 +160,30 @@ executable file (`reback`).
   will be created automatically.
 - **elements**: An array of objects, each representing an element for backup (e.g., a database or directory).
 
-### Adding Backup Elements:
+### Elements for Backup/Restoration:
 
-You can add backup elements to the `elements` array in the configuration file. Each element is an object with parameters
-for backing up a specific type. Example:
+A customizable list of elements for backup/restore.
+
+Example of an element:
 
 ```json
 {
-  "elements": [
-    {
-      "element_title": "my_pg_db",
-      "s3_folder": "postgres_backups",
-      "backup_retention_days": 30,
-      "s3_backup_retention_days": 90,
-      "params": {
-        "type": "postgresql",
-        "db_host": "localhost",
-        "db_port": 5432,
-        "db_name": "my_database",
-        "db_user": "user",
-        "db_password": "password"
-      }
-    },
-    {
-      "element_title": "project_folder",
-      "s3_folder": "folder_backups",
-      "backup_retention_days": 30,
-      "s3_backup_retention_days": 90,
-      "params": {
-        "type": "folder",
-        "target_path": "/path/to/folder"
-      }
-    }
-  ]
+  "element_title": "my_pg_db",
+  "s3_folder": "postgres_backups",
+  "backup_retention_days": 30,
+  "s3_backup_retention_days": 90,
+  "params": {
+    "type": "postgresql",
+    "db_host": "localhost",
+    "db_port": 5432,
+    "db_name": "my_database",
+    "db_user": "user",
+    "db_password": "password"
+  }
 }
 ```
 
-A complete configuration example is available in the file [settings.json.example](settings.json.example).
-
-### Available Element Types:
+#### Available element types and their parameters:
 
 - `postgresql` — Backup of a PostgreSQL database.
 - `postgresql_docker` — Backup of a PostgreSQL database from a Docker container.
@@ -175,8 +192,6 @@ A complete configuration example is available in the file [settings.json.example
 - `mysql` — Backup of a MySQL database.
 - `mysql_docker` — Backup of a MySQL database from a Docker container.
 - `folder` — Backup of a local directory.
-
-### Backup Element Parameters Table:
 
 | Element Type          | Parameter          | Description                                   | Required |
 |-----------------------|--------------------|-----------------------------------------------|----------|
@@ -213,7 +228,7 @@ A complete configuration example is available in the file [settings.json.example
 |                       |                    |                                               |          |  
 | **folder**            | `target_path`      | Path to the directory to be backed up.        | Required |  
 
-### Common Parameters for All Elements:
+#### Common Parameters for All Elements:
 
 | Parameter                    | Description                                                 |
 |------------------------------|-------------------------------------------------------------|
@@ -224,37 +239,64 @@ A complete configuration example is available in the file [settings.json.example
 
 ## Usage
 
+### Backup
+
 To start the backup process, run the following command:
 
 ```bash
 ./reback backup
 ```
 
-**Important**: The `backup` argument is required to start the backup process. Without it, the program will not run and
+**Important**: The `backup` argument is required to start the backup process. Without it, the program will not run, and
 you will get an error.
 
-### Running as a Cron Job
+#### Cron Task
 
 You can automate the backup process by creating a Cron job. For example, to run the backup every day at 2:00 AM, add the
 following line to your crontab file:
 
 ```bash
-0 2 * * * /path/to/reback backup >> /path/to/logs/backup.log 2>&1
+0 2 * * * /path/to/reback backup
 ```
 
 This Cron job will:
 
 - Run the `./reback backup` command every day at 2:00 AM.
-- Redirect both standard output and error output to a log file (`backup.log`).
 
-To edit your crontab, use the command:
+To edit the crontab, use the command:
 
 ```bash
 crontab -e
 ```
 
-Then, add the Cron job line. Make sure the path to the `reback` binary and the log file are correct.
+Then, add the Cron job line. Make sure the path to the `reback` binary is correct.
 
+### Restore Backup
+
+There are two options for restoring backups:
+
+#### Restore All Backups
+
+1. Make sure you have a configured `settings.json` file with descriptions of all the required elements.
+2. Run the command to start the restoration:
+
+    ```bash
+    ./reback restore
+    ```
+
+#### Restore Specific Elements
+
+1. Make sure you have a configured `settings.json` file with descriptions of all the required elements.
+2. Run the command to start the restoration:
+
+    ```bash
+    # Template
+    ./reback restore <element_title1> <element_title2>
+    
+    # Example
+    ./reback restore my_pg_db image_folder mongo_site
+    ```
+   
 ## Author
 
 Program author: Ivan Ashikhmin  
