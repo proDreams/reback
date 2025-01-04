@@ -1,3 +1,3 @@
 pub mod settings;
-mod elements;
+pub mod elements;
 mod backup_params;

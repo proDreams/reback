@@ -262,7 +262,217 @@ impl Elements {
                 ));
             }
         }
+
+        info!("Backup created successfully!");
+
         Ok(file_path)
+    }
+
+    /// Restores a backup based on the specified parameters for the element.
+    ///
+    /// This function restores data from a backup file using the appropriate method: PostgreSQL, MongoDB, Docker-based PostgreSQL, Docker-based MongoDB, or folder restore.
+    /// It constructs the required restore command, executes it, and restores the data to the original or specified location.
+    ///
+    /// # Arguments
+    /// - `path` - The path to the backup file that needs to be restored.
+    ///
+    /// # Returns
+    /// - `Ok(())` - Indicates successful restoration of the backup.
+    /// - `Err(String)` - An error message if restore parameters are not provided or an error occurs during restoration.
+    ///
+    /// # Behavior
+    /// - Executes a restore command based on the type specified in `self.params`.
+    /// - If no restore parameters are provided (`None`), it returns an error with the element's title.
+    /// - Handles PostgreSQL, MongoDB, Docker-based restores, and folder restores.
+    /// - For Docker-based restores, the appropriate `docker exec` commands are used to execute restoration inside containers.
+    /// - For folder restores, the `tar` command is used to extract the archived files.
+    ///
+    /// # Example
+    /// ```rust
+    /// element.perform_restore(&backup_file_path).await?;
+    /// ```
+    pub async fn perform_restore(&self, path: &Path) -> Result<(), String> {
+        match &self.params {
+            Some(BackupParams::Postgresql {
+                db_host,
+                db_port,
+                db_name,
+                db_user,
+                db_password,
+            }) => {
+                let db_host = db_host.clone().unwrap_or(String::from("localhost"));
+
+                info!(
+                    "Restoring PostgreSQL: host={}, port={}, db={}, user={}",
+                    db_host, db_port, db_name, db_user
+                );
+
+                let command = format!(
+                    "PGPASSWORD=\"{}\" psql -U {} -h {} -p {} -d {} -f {}",
+                    db_password,
+                    db_user,
+                    db_host,
+                    db_port,
+                    db_name,
+                    path.display(),
+                );
+
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::PostgresqlDocker {
+                docker_container,
+                db_name,
+                db_user,
+                db_password,
+            }) => {
+                info!(
+                    "Restoring PostgreSQL Docker: docker_container={}, db={}, user={}",
+                    docker_container, db_name, db_user
+                );
+
+                let command = format!(
+                    "docker exec -i {} bash -c \"PGPASSWORD='{}' psql -U {} -d {}\" < {}",
+                    docker_container,
+                    db_password,
+                    db_user,
+                    db_name,
+                    path.display(),
+                );
+
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::Mongodb {
+                db_host,
+                db_port,
+                db_user,
+                db_password,
+            }) => {
+                info!("Restoring MongoDB");
+                let db_host = db_host.clone().unwrap_or(String::from("localhost"));
+
+                let command = match db_user {
+                    Some(user) => format!(
+                        "mongorestore --host {} --port {} --username {} --password {:?} --authenticationDatabase admin --archive={} --gzip",
+                        db_host,
+                        db_port,
+                        user,
+                        db_password,
+                        path.display(),
+                    ),
+                    None => format!(
+                        "mongorestore --host {} --port {} --archive={} --gzip",
+                        db_host,
+                        db_port,
+                        path.display(),
+                    ),
+                };
+
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::MongodbDocker {
+                docker_container,
+                db_user,
+                db_password,
+            }) => {
+                info!(
+                    "Restoring MongoDB Docker: docker_container={}",
+                    docker_container
+                );
+
+                let command = match db_user {
+                    Some(user) => format!(
+                        "docker exec -i {} mongorestore --username {} --password {:?} --authenticationDatabase admin --archive --gzip",
+                        docker_container,
+                        user,
+                        db_password,
+                    ),
+                    None => format!(
+                        "docker exec -i {} mongorestore --archive --gzip",
+                        docker_container,
+                    ),
+                };
+
+                let copy_command = format!(
+                    "docker cp {} {}:/backup/backup.gz",
+                    path.display(),
+                    docker_container,
+                );
+
+                self.execute_command(&copy_command).await;
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::Folder { target_path }) => {
+                info!("Restoring folder: path={}", target_path);
+
+                let command = format!("tar -xzvf {} -C {}", path.display(), target_path);
+
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::MySQL {
+                db_host,
+                db_port,
+                db_name,
+                db_user,
+                db_password,
+            }) => {
+                let db_host = db_host.clone().unwrap_or(String::from("localhost"));
+
+                info!(
+                    "Restoring MySQL: host={}, port={}, db={}, user={}",
+                    db_host, db_port, db_name, db_user
+                );
+
+                let command = format!(
+                    "MYSQL_PWD={} mysql -u {} -h {} -P {} {} < {}",
+                    db_password,
+                    db_user,
+                    db_host,
+                    db_port,
+                    db_name,
+                    path.display(),
+                );
+
+                self.execute_command(&command).await;
+            }
+
+            Some(BackupParams::MySQLDocker {
+                docker_container,
+                db_name,
+                db_user,
+                db_password,
+            }) => {
+                info!(
+                    "Restoring MySQL Docker: docker_container={}, db={}, user={}",
+                    docker_container, db_name, db_user
+                );
+
+                let command = format!(
+                    "docker exec -i {} bash -c \"MYSQL_PWD='{}' mysql -u {} {}\" < {}",
+                    docker_container,
+                    db_password,
+                    db_user,
+                    db_name,
+                    path.display(),
+                );
+
+                self.execute_command(&command).await;
+            }
+
+            None => {
+                return Err(format!(
+                    "No backup parameters provided for element '{}'",
+                    self.element_title
+                ));
+            }
+        }
+
+        info!("Restore created successfully!");
+        Ok(())
     }
 
     /// Executes a shell command asynchronously to perform a backup.
@@ -297,7 +507,6 @@ impl Elements {
         };
 
         if output.status.success() {
-            info!("Backup created successfully!");
         } else {
             error!("Backup failed!");
             error!("Error: {}", String::from_utf8_lossy(&output.stderr));
