@@ -7,6 +7,8 @@
 
 ## [Русская версия](./README-RU.md)
 
+<img src="images/logo.svg" width="320" height="240" style="text-align: center;" alt="ReBack">  
+
 This utility is designed for server users who need to regularly create backups of databases (PostgreSQL, MongoDB, and
 MySQL) and directories. ReBack supports saving backups both locally and in S3-compatible storage, organizing them in a
 convenient structure, and automatically tracking their retention period.
