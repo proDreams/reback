@@ -5,6 +5,10 @@
 ![GitHub Release](https://img.shields.io/github/v/release/proDreams/reback)
 ![GitHub Downloads](https://img.shields.io/github/downloads/proDreams/reback/total)
 
+<p align="center">
+  <img src="images/logo.svg" width="320" height="240" alt="ReBack">
+</p>
+
 Эта утилита предназначена для пользователей серверов, которым необходимо регулярно создавать бэкапы баз данных (
 PostgreSQL, MongoDB и MySQL) и директорий. ReBack поддерживает сохранение бэкапов как локально, так и в S3-совместимых
 хранилищах, организуя их в удобной структуре и автоматически отслеживая срок хранения.
